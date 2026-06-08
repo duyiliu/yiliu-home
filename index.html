@@ -15,221 +15,243 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="browser-frame" aria-hidden="true">
+      <div class="window-controls"><span></span><span></span><span></span></div>
+      <div class="address-bar">https://home.duyiliu.top · Claude-style aligned workspace redesign</div>
+    </div>
+
     <div class="page-shell">
-      <header class="topbar">
-        <div class="window-controls" aria-hidden="true"><span></span><span></span><span></span></div>
+      <header id="top" class="topbar">
         <a class="brand" href="#top" aria-label="返回首页">
-          <span class="brand-mark">流</span>
+          <span class="brand-mark">—</span>
           <span>
             <strong>一流工作台</strong>
-            <small>new-tab / supabase</small>
+            <small>浏览器首页 · 个人任务 / 快捷入口 / 信息雷达 / 随手记</small>
           </span>
         </a>
         <div class="topbar-actions">
+          <span id="dateLabel" class="ghost-chip">--</span>
+          <span id="weekdayLabel" class="ghost-chip">--</span>
+          <span id="clockLabel" class="clock-pill">--:--</span>
+          <span class="ghost-chip">⌘ K 快捷命令</span>
           <span id="syncStatus" class="status-pill is-idle">未连接 Supabase</span>
-          <button id="settingsToggle" class="ghost-button" type="button">Settings</button>
+          <button id="settingsToggle" class="dark-button" type="button">打开设置</button>
         </div>
       </header>
 
-      <main id="top" class="app-layout">
-        <!-- 顶部横向看板 Hero Banner -->
-        <header class="hero-banner">
-          <div class="banner-welcome">
-            <div class="banner-date-group">
-              <span id="dateLabel">--</span>
-              <span id="weekdayLabel" class="weekday-tag">--</span>
-              <span id="clockLabel" class="clock-tag">--:--</span>
+      <main class="app-layout">
+        <aside class="left-rail">
+          <section class="profile-card panel-card">
+            <div class="profile-icon">流</div>
+            <h2>duyiliu</h2>
+            <p>把常用工具、任务和信息流统一收进一个安静的个人首页。</p>
+            <div class="metric-grid" aria-label="个人概览">
+              <div><strong id="linkMetric">0</strong><span>快捷入口</span></div>
+              <div><strong id="taskMetric">0</strong><span>今日重点</span></div>
+              <div><strong id="habitMetric">0/0</strong><span>习惯连续</span></div>
+              <div><strong id="sourceMetric">0</strong><span>信息更新</span></div>
             </div>
-            <h1 id="heroTitle">Workspace</h1>
-          </div>
-          
-          <div class="banner-search-wrapper">
-            <form id="searchForm" class="banner-search-box">
-              <span class="prompt-symbol">$</span>
+          </section>
+
+          <nav class="nav-card panel-card" aria-label="首页导航">
+            <a class="is-active" href="#top"><span>H</span>总览首页</a>
+            <a href="#quick-command"><span>K</span>快捷命令</a>
+            <a href="#launch"><span>AI</span>AI 工具</a>
+            <a href="#radar"><span>R</span>信息雷达</a>
+            <a href="#calendar"><span>C</span>日历动态</a>
+            <a href="#settingsPanel"><span>S</span>系统设置</a>
+          </nav>
+
+          <section class="quote-card panel-card">
+            <p class="quote-text">“少一点装饰，多一点秩序。让首页像一个可以马上开始工作的安静书桌。”</p>
+            <span class="quote-author">— 一流工作台</span>
+            <div><span class="dot"></span><strong>本地优先</strong><em>云端未连接</em></div>
+          </section>
+        </aside>
+
+        <section class="center-column">
+          <section id="quick-command" class="hero-card panel-card">
+            <div class="eyebrow">Claude-inspired · warm minimal UI</div>
+            <h1>今天要处理什么？</h1>
+            <p>把搜索、启动、记录、计划合并到一个入口。整体从深色科技感改为暖白纸张感，降低视觉噪音。</p>
+            <form id="searchForm" class="command-search">
+              <span class="ai-dot">AI</span>
               <input
                 id="searchInput"
                 name="query"
                 type="search"
                 autocomplete="off"
-                placeholder="ask, search, open url...  gh: repo / mdn: fetch"
+                placeholder="搜索网站、打开工具、记录灵感、创建今日任务..."
               />
-              <select id="searchEngine" name="engine">
+              <select id="searchEngine" name="engine" aria-label="搜索引擎">
                 <option value="google">Google</option>
                 <option value="baidu">百度</option>
                 <option value="github">GitHub</option>
                 <option value="mdn">MDN</option>
                 <option value="juejin">掘金</option>
               </select>
-              <button type="submit">Run</button>
+              <button type="submit">⌘ K</button>
             </form>
-            <div class="banner-shortcut-row" aria-label="快捷搜索说明">
-              <span><code>/</code> search</span>
-              <span><code>n</code> task</span>
-              <span><code>gh:</code> github</span>
-              <span><code>mdn:</code> docs</span>
+            <div class="prompt-row" aria-label="快捷操作">
+              <button type="button" onclick="window.open('https://github.com/', '_blank', 'noopener,noreferrer')">打开 GitHub</button>
+              <button type="button" onclick="document.querySelector('#noteBody').focus()">写一条随手记</button>
+              <button type="button" onclick="document.querySelector('#taskInput').focus()">查看今日重点</button>
+              <button type="button" onclick="document.querySelector('#searchInput').focus()">启动 AI 编码</button>
             </div>
-          </div>
-
-          <div class="banner-right-group">
-            <div id="weatherDisplay" class="weather-display" title="点击自定义城市">
-              <span id="weatherIcon" class="weather-icon">☀️</span>
-              <span id="weatherTemp" class="weather-temp">--°C</span>
-              <span id="weatherLoc" class="weather-loc">定位中...</span>
-            </div>
-            <div class="banner-metrics" aria-label="今日概览">
-              <div class="metric-item"><span>Tasks</span><strong id="taskMetric">0</strong></div>
-              <div class="metric-item"><span>Links</span><strong id="linkMetric">0</strong></div>
-              <div class="metric-item"><span>Sources</span><strong id="sourceMetric">0</strong></div>
-              <div class="metric-item"><span>Habits</span><strong id="habitMetric">0/0</strong></div>
-            </div>
-          </div>
-        </header>
-
-        <!-- 双栏主干区域 Layout Grid -->
-        <div class="dashboard-content">
-          <!-- 主内容区域 (占 2/3) -->
-          <section class="main-column">
-
-            <section id="setupPanel" class="setup-panel hidden" aria-live="polite">
-              <div>
-                <p class="eyebrow">Supabase</p>
-                <h2>连接数据空间</h2>
-                <p>Supabase 项目配置已内置。首次使用只需要创建账号或登录，不需要填写 Project URL 和 anon key。</p>
-              </div>
-              <form id="configForm" class="panel-form">
-                <label><span>Project URL</span><input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" required /></label>
-                <label>
-                  <span>Anon Key</span>
-                  <input id="supabaseAnonKey" type="text" autocomplete="off" spellcheck="false" placeholder="eyJhbGciOi..." required />
-                </label>
-                <button type="submit">Save config</button>
-              </form>
-              <form id="authForm" class="panel-form">
-                <label><span>Email</span><input id="authEmail" type="email" autocomplete="email" required /></label>
-                <label><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" required /></label>
-                <div class="split-actions">
-                  <button type="submit">Login</button>
-                  <button id="signUpButton" class="ghost-button" type="button">Sign up</button>
-                </div>
-                <p class="form-hint">首次使用请先创建账号；如果 Supabase 开启了邮件确认，需要先确认邮件。</p>
-              </form>
-            </section>
-
-            <!-- 今日队列 与 快捷入口 并排 -->
-            <div class="split-widgets-row">
-              <article class="widget tasks-widget">
-                <div class="widget-head">
-                  <div><p class="eyebrow">Queue</p><h2>今日重点</h2></div>
-                  <button id="clearDoneButton" class="ghost-button small" type="button">Clear done</button>
-                </div>
-                <form id="taskForm" class="inline-form task-form">
-                  <input id="taskInput" type="text" placeholder="Add a thing to move forward" required />
-                  <select id="taskPriority" aria-label="优先级">
-                    <option value="high">High</option>
-                    <option value="normal" selected>Normal</option>
-                    <option value="low">Low</option>
-                  </select>
-                  <button type="submit">Add</button>
-                </form>
-                <div id="taskList" class="task-list empty-state">登录后同步今日待办。</div>
-              </article>
-
-              <article class="widget links-widget">
-                <div class="widget-head">
-                  <div><p class="eyebrow">Launch</p><h2>快捷入口</h2></div>
-                  <button id="toggleLinkForm" class="ghost-button small" type="button">New link</button>
-                </div>
-                <form id="linkForm" class="inline-form hidden">
-                  <input id="linkTitle" type="text" placeholder="Title: GitHub" required />
-                  <input id="linkUrl" type="text" placeholder="URL: github.com" required />
-                  <input id="linkCategory" type="text" placeholder="Group" value="常用" />
-                  <button type="submit">Save</button>
-                </form>
-                <div id="linkFilters" class="filter-row"></div>
-                <div id="linkGrid" class="link-grid empty-state">连接 Supabase 后显示快捷入口。</div>
-              </article>
-            </div>
-
-            <!-- 信息雷达 通铺 -->
-            <article class="widget sources-widget">
-              <div class="widget-head">
-                <div><p class="eyebrow">Radar</p><h2>信息雷达</h2></div>
-                <div class="widget-actions">
-                  <button id="refreshFeedsButton" class="ghost-button small" type="button">Refresh RSS</button>
-                  <button id="toggleSourceForm" class="ghost-button small" type="button">New source</button>
-                </div>
-              </div>
-              <form id="sourceForm" class="inline-form hidden">
-                <input id="sourceTitle" type="text" placeholder="Title: Hacker News" required />
-                <input id="sourceUrl" type="text" placeholder="URL or RSS feed" required />
-                <input id="sourceCategory" type="text" placeholder="Category" value="技术" />
-                <select id="sourceKind" aria-label="类型"><option value="link">Link</option><option value="rss">RSS</option></select>
-                <button type="submit">Save</button>
-              </form>
-              <div class="radar-columns">
-                <div><p class="eyebrow subhead">Sources</p><div id="sourceList" class="source-list empty-state">登录后同步你关心的信息源。</div></div>
-                <div><p class="eyebrow subhead">Latest</p><div id="feedList" class="feed-list empty-state">部署 Edge Function 后可刷新 RSS 内容。</div></div>
-              </div>
-            </article>
           </section>
 
-          <!-- 侧边栏工具 (占 1/3) -->
-          <aside class="side-column">
-            <article class="widget note-widget">
-              <div class="widget-head">
-                <div><p class="eyebrow">Scratch</p><h2>随手记</h2></div>
-                <span id="noteSaved" class="mini-pill">未同步</span>
+          <section id="setupPanel" class="setup-panel panel-card hidden" aria-live="polite">
+            <div>
+              <p class="eyebrow">Supabase</p>
+              <h2>连接数据空间</h2>
+              <p>登录后同步快捷入口、今日重点、随手记和习惯卡。</p>
+            </div>
+            <form id="configForm" class="panel-form">
+              <label><span>Project URL</span><input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" required /></label>
+              <label><span>Anon Key</span><input id="supabaseAnonKey" type="text" autocomplete="off" spellcheck="false" required /></label>
+              <button type="submit">保存配置</button>
+            </form>
+            <form id="authForm" class="panel-form">
+              <label><span>Email</span><input id="authEmail" type="email" autocomplete="email" required /></label>
+              <label><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" required /></label>
+              <div class="split-actions">
+                <button type="submit">登录</button>
+                <button id="signUpButton" class="ghost-button" type="button">注册</button>
               </div>
-              <textarea id="noteBody" placeholder="meeting links, shell commands, rough ideas..." spellcheck="false"></textarea>
-            </article>
+              <p class="form-hint">首次使用请先创建账号；如果开启邮件确认，需要先确认邮件。</p>
+            </form>
+          </section>
 
-            <!-- 动态月历组件 -->
-            <article class="widget calendar-widget">
+          <div class="mid-grid">
+            <article class="widget tasks-widget panel-card">
               <div class="widget-head">
-                <div><p class="eyebrow">Calendar</p><h2>日历与动态</h2></div>
-                <div class="calendar-controls">
-                  <button id="prevMonthBtn" class="ghost-button small" type="button">&lt;</button>
-                  <span id="calendarMonthLabel" class="calendar-month-label">--:--</span>
-                  <button id="nextMonthBtn" class="ghost-button small" type="button">&gt;</button>
-                </div>
+                <div><h2>今日重点</h2><p>清单式留白，信息不挤压。</p></div>
+                <button id="clearDoneButton" class="ghost-button small" type="button">Clear done</button>
               </div>
-              <div class="calendar-body">
-                <div class="calendar-weekdays">
-                  <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
-                </div>
-                <div id="calendarGrid" class="calendar-grid"></div>
-              </div>
-              <div id="calendarDayDetails" class="calendar-day-details hidden">
-                <p class="eyebrow subhead" id="calendarDetailsDate">--月--日 任务动态</p>
-                <ul id="calendarDetailsList" class="calendar-details-list"></ul>
-              </div>
-            </article>
-
-            <!-- 习惯打卡组件 -->
-            <article class="widget habits-widget">
-              <div class="widget-head">
-                <div><p class="eyebrow">Habits</p><h2>习惯打卡</h2></div>
-                <button id="toggleHabitForm" class="ghost-button small" type="button">New habit</button>
-              </div>
-              <form id="habitForm" class="inline-form hidden">
-                <input id="habitTitle" type="text" placeholder="Title: 每天喝水" required />
+              <form id="taskForm" class="inline-form task-form">
+                <input id="taskInput" type="text" placeholder="添加一件推进事项" required />
+                <select id="taskPriority" aria-label="优先级">
+                  <option value="high">High</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="low">Low</option>
+                </select>
                 <button type="submit">Add</button>
               </form>
-              <div id="habitsList" class="habits-list empty-state">登录后同步习惯打卡。</div>
+              <div id="taskList" class="task-list empty-state">登录后同步今日待办。</div>
             </article>
-          </aside>
-        </div>
+
+            <article class="ai-panel panel-card">
+              <div class="widget-head dark-head">
+                <div><h2>AI 命令面板</h2><p>保留工作台属性，弱化炫光。</p></div>
+                <span class="ready-pill">Ready</span>
+              </div>
+              <p class="ai-prompt">帮我把今天的待办、最近项目和常用工具整理成一个可执行清单，并按优先级排序。</p>
+              <div class="ai-actions">
+                <button type="button">生成摘要</button>
+                <button type="button">拆分任务</button>
+                <button type="button">打开项目</button>
+                <button type="button" onclick="document.querySelector('#noteBody').focus()">记录灵感</button>
+              </div>
+            </article>
+          </div>
+
+          <article id="launch" class="widget links-widget panel-card">
+            <div class="widget-head">
+              <div><h2>快捷入口</h2><p>统一图标块，保证每行四列对齐。</p></div>
+              <button id="toggleLinkForm" class="ghost-button small" type="button">New link</button>
+            </div>
+            <form id="linkForm" class="inline-form hidden">
+              <input id="linkTitle" type="text" placeholder="Title: GitHub" required />
+              <input id="linkUrl" type="text" placeholder="URL: github.com" required />
+              <input id="linkCategory" type="text" placeholder="Group" value="常用" />
+              <button type="submit">Save</button>
+            </form>
+            <div id="linkFilters" class="filter-row"></div>
+            <div id="linkGrid" class="link-grid empty-state">连接 Supabase 后显示快捷入口。</div>
+          </article>
+
+          <article id="radar" class="widget sources-widget panel-card">
+            <div class="widget-head">
+              <div><h2>信息雷达</h2><p>AI 资讯、项目动态、服务器状态统一进入。</p></div>
+              <div class="widget-actions">
+                <button id="refreshFeedsButton" class="ghost-button small" type="button">Refresh RSS</button>
+                <button id="toggleSourceForm" class="ghost-button small" type="button">New source</button>
+              </div>
+            </div>
+            <form id="sourceForm" class="inline-form hidden">
+              <input id="sourceTitle" type="text" placeholder="Title: Hacker News" required />
+              <input id="sourceUrl" type="text" placeholder="URL or RSS feed" required />
+              <input id="sourceCategory" type="text" placeholder="Category" value="技术" />
+              <select id="sourceKind" aria-label="类型"><option value="link">Link</option><option value="rss">RSS</option></select>
+              <button type="submit">Save</button>
+            </form>
+            <div class="radar-columns">
+              <div><p class="eyebrow subhead">Sources</p><div id="sourceList" class="source-list empty-state">登录后同步你关心的信息源。</div></div>
+              <div><p class="eyebrow subhead">Latest</p><div id="feedList" class="feed-list empty-state">部署 Edge Function 后可刷新 RSS 内容。</div></div>
+            </div>
+          </article>
+        </section>
+
+        <aside class="right-rail">
+          <section class="connect-card panel-card">
+            <h2>连接数据空间</h2>
+            <p>登录后同步快捷入口、今日重点、随手记和习惯卡。</p>
+            <button id="showSetupButton" type="button">使用 Supabase 登录</button>
+            <div><span class="dot"></span><span id="sessionLabel">等待连接</span><em>Local mode</em></div>
+          </section>
+
+          <section id="weatherDisplay" class="weather-card panel-card" role="button" tabindex="0" title="点击自定义城市" aria-label="天气信息，按回车自定义城市">
+            <div><strong id="weatherTemp">--°C</strong><span id="weatherLoc">定位中...</span></div>
+            <span id="weatherIcon" class="weather-orb">☀️</span>
+          </section>
+
+          <article id="calendar" class="widget calendar-widget panel-card">
+            <div class="widget-head">
+              <div><h2>日历</h2><p id="calendarMonthLabel" class="calendar-month-label">--</p></div>
+              <div class="calendar-controls">
+                <button id="prevMonthBtn" class="ghost-button small" type="button">‹</button>
+                <span class="today-pill">Today</span>
+                <button id="nextMonthBtn" class="ghost-button small" type="button">›</button>
+              </div>
+            </div>
+            <div class="calendar-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+            <div id="calendarDayDetails" class="calendar-day-details hidden">
+              <p class="eyebrow subhead" id="calendarDetailsDate">--月--日 任务动态</p>
+              <ul id="calendarDetailsList" class="calendar-details-list"></ul>
+            </div>
+          </article>
+
+          <article class="widget note-widget panel-card">
+            <div class="widget-head">
+              <div><h2>随手记</h2><p>轻量记录，不抢主视觉。</p></div>
+              <span id="noteSaved" class="mini-pill">未同步</span>
+            </div>
+            <textarea id="noteBody" placeholder="首页设计方向、交互建议、命令片段..." spellcheck="false"></textarea>
+          </article>
+
+          <article class="widget habits-widget panel-card">
+            <div class="widget-head">
+              <div><h2>习惯打卡</h2><p>少量指标，避免堆满。</p></div>
+              <button id="toggleHabitForm" class="ghost-button small" type="button">New habit</button>
+            </div>
+            <form id="habitForm" class="inline-form hidden">
+              <input id="habitTitle" type="text" placeholder="Title: 每天喝水" required />
+              <button type="submit">Add</button>
+            </form>
+            <div id="habitsList" class="habits-list empty-state">登录后同步习惯打卡。</div>
+          </article>
+        </aside>
       </main>
+
       <footer class="app-footer">
-        <div class="quote-container">
-          <p class="quote-text">“ 所谓极客，就是找到自己热爱的事物，并为之付出极致的专注。 ”</p>
-          <span class="quote-author">— 一流工作台</span>
-        </div>
+        <span>布局校正版：固定 260 / 696 / 356 三栏栅格，所有卡片在同一网格内对齐，避免错位。</span>
+        <span>Claude warm minimal / personal OS</span>
       </footer>
     </div>
 
     <aside id="settingsPanel" class="settings-panel hidden" aria-label="设置面板">
-      <div class="settings-card">
+      <div class="settings-card panel-card">
         <div class="widget-head">
           <div><p class="eyebrow">Settings</p><h2>数据与账号</h2></div>
           <button id="settingsClose" class="ghost-button small" type="button">Close</button>
@@ -239,7 +261,7 @@
           <div><dt>当前账号</dt><dd id="settingsUser">未登录</dd></div>
         </dl>
         <div class="split-actions">
-          <button id="showSetupButton" type="button">Configure</button>
+          <button type="button" onclick="document.querySelector('#settingsPanel').classList.add('hidden'); document.querySelector('#setupPanel').classList.remove('hidden')">Configure</button>
           <button id="signOutButton" class="danger-button" type="button">Sign out</button>
         </div>
       </div>

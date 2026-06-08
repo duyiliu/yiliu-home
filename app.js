@@ -128,6 +128,12 @@ function bindEvents() {
   $("#toggleHabitForm").addEventListener("click", () => toggle("#habitForm"));
   $("#habitForm").addEventListener("submit", createHabit);
   $("#weatherDisplay").addEventListener("click", handleWeatherClick);
+  $("#weatherDisplay").addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleWeatherClick();
+    }
+  });
 
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
