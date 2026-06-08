@@ -1,0 +1,2 @@
+[functions.refresh-feeds]
+verify_jwt = true
