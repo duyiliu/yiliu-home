@@ -60,8 +60,25 @@ const FAMOUS_QUOTES = [
   { text: "Code is poetry.", author: "WordPress" }
 ];
 
+function getStaticSupabaseConfig() {
+  const supabase = window.YILIU_HOME_CONFIG?.supabase;
+  if (!supabase?.url || !supabase?.anonKey) return null;
+  return {
+    url: normalizeSupabaseUrl(supabase.url),
+    anonKey: supabase.anonKey.trim(),
+  };
+}
+
+function getInitialSupabaseConfig() {
+  return getStaticSupabaseConfig() || loadJson(CONFIG_KEY);
+}
+
+function hasStaticSupabaseConfig() {
+  return Boolean(getStaticSupabaseConfig());
+}
+
 const state = {
-  config: loadJson(CONFIG_KEY),
+  config: getInitialSupabaseConfig(),
   session: loadJson(SESSION_KEY),
   links: [],
   tasks: [],
@@ -128,6 +145,7 @@ function bindEvents() {
 
 async function boot() {
   renderConfigState();
+  renderConfigFormState();
   if (!state.config?.url || !state.config?.anonKey) {
     setStatus("未连接 Supabase", "idle");
     toggle("#setupPanel", true);
@@ -184,6 +202,25 @@ function renderConfigState() {
   if (sessionNode) sessionNode.textContent = state.session?.user?.email || "等待连接";
 }
 
+function renderConfigFormState() {
+  const configForm = $("#configForm");
+  const urlInput = $("#supabaseUrl");
+  const anonKeyInput = $("#supabaseAnonKey");
+  const fixedConfig = getStaticSupabaseConfig();
+
+  if (!configForm || !urlInput || !anonKeyInput) return;
+
+  if (fixedConfig) {
+    state.config = fixedConfig;
+    urlInput.value = fixedConfig.url;
+    anonKeyInput.value = fixedConfig.anonKey;
+    configForm.classList.add("hidden");
+    return;
+  }
+
+  configForm.classList.remove("hidden");
+}
+
 function setStatus(message, type = "idle") {
   const node = $("#syncStatus");
   node.textContent = message;
@@ -192,6 +229,13 @@ function setStatus(message, type = "idle") {
 
 async function saveConfig(event) {
   event.preventDefault();
+  if (hasStaticSupabaseConfig()) {
+    state.config = getStaticSupabaseConfig();
+    renderConfigState();
+    renderConfigFormState();
+    setStatus("Supabase 项目配置已内置，请直接登录", "ok");
+    return;
+  }
   const url = normalizeSupabaseUrl($("#supabaseUrl").value);
   const anonKey = $("#supabaseAnonKey").value.trim();
   if (!url || !anonKey) return;

@@ -143,3 +143,66 @@ create index if not exists tasks_user_done_idx on public.tasks(user_id, done, so
 create index if not exists sources_user_category_idx on public.sources(user_id, category, sort_order);
 create index if not exists feed_items_user_fetched_idx on public.feed_items(user_id, fetched_at desc);
 create index if not exists feed_items_user_source_idx on public.feed_items(user_id, source_id);
+
+create or replace function public.seed_user_home(target_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.links(user_id, title, url, category, description, accent, sort_order)
+  values
+    (target_user_id, '邮箱', 'https://mail.google.com/', '工作流', '处理收件箱与日程邀请', '#f3c969', 10),
+    (target_user_id, '日历', 'https://calendar.google.com/', '工作流', '查看会议和时间块', '#74e6d6', 20),
+    (target_user_id, 'Notion', 'https://www.notion.so/', '工作流', '项目文档和知识库', '#ffffff', 30),
+    (target_user_id, 'GitHub', 'https://github.com/', '开发', '代码仓库、PR 和 Issue', '#9ea8ff', 40),
+    (target_user_id, 'Vercel', 'https://vercel.com/dashboard', '开发', '部署状态与项目监控', '#ffffff', 50),
+    (target_user_id, 'MDN', 'https://developer.mozilla.org/zh-CN/', '开发', 'Web API 与兼容性查询', '#74e6d6', 60),
+    (target_user_id, '掘金', 'https://juejin.cn/', '信息', '中文技术趋势与实践', '#4c8dff', 70),
+    (target_user_id, '少数派', 'https://sspai.com/', '信息', '效率工具与数字生活', '#ff6b6b', 80),
+    (target_user_id, '阮一峰周刊', 'https://www.ruanyifeng.com/blog/', '信息', '技术与互联网观察', '#f3c969', 90)
+  on conflict do nothing;
+
+  insert into public.tasks(user_id, title, priority, sort_order)
+  values
+    (target_user_id, '写下今天最重要的 1 件事', 'high', 10),
+    (target_user_id, '检查日历、邮箱和未读消息', 'normal', 20)
+  on conflict do nothing;
+
+  insert into public.notes(user_id, kind, title, body)
+  values (
+    target_user_id,
+    'scratch',
+    '随手记',
+    '临时想法、会议链接、命令片段都可以先放这里。'
+  )
+  on conflict (user_id, kind) do nothing;
+
+  insert into public.sources(user_id, title, url, kind, category, description, sort_order)
+  values
+    (target_user_id, 'Hacker News', 'https://news.ycombinator.com/rss', 'rss', '技术', '海外技术社区热门讨论', 10),
+    (target_user_id, 'GitHub Blog', 'https://github.blog/feed/', 'rss', '技术', 'GitHub 官方更新', 20),
+    (target_user_id, '阮一峰网络日志', 'https://www.ruanyifeng.com/blog/atom.xml', 'rss', '中文', '科技爱好者周刊与文章', 30),
+    (target_user_id, 'Solidot', 'https://www.solidot.org/index.rss', 'rss', '中文', '开源、科学与技术新闻', 40),
+    (target_user_id, 'Product Hunt', 'https://www.producthunt.com/', 'link', '产品', '新产品和工具发现', 50)
+  on conflict do nothing;
+end;
+$$;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.seed_user_home(new.id);
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_seed_home on auth.users;
+create trigger on_auth_user_created_seed_home
+after insert on auth.users
+for each row execute function public.handle_new_user();

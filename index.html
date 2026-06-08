@@ -94,7 +94,7 @@
               <div>
                 <p class="eyebrow">Supabase</p>
                 <h2>连接数据空间</h2>
-                <p>先在 Supabase SQL Editor 执行 <code>supabase/schema.sql</code>，再填写 Project URL 和 anon key。不要填写 service role key。</p>
+                <p>Supabase 项目配置已内置。首次使用只需要创建账号或登录，不需要填写 Project URL 和 anon key。</p>
               </div>
               <form id="configForm" class="panel-form">
                 <label><span>Project URL</span><input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" required /></label>
@@ -254,6 +254,7 @@
       </label>
     </template>
 
-    <script src="app.js?v=1.1" defer></script>
+    <script src="config.js?v=1.0"></script>
+    <script src="app.js?v=1.2" defer></script>
   </body>
 </html>
