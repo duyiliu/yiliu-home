@@ -34,7 +34,7 @@
 
     <div class="browser-frame" aria-hidden="true">
       <div class="window-controls"><span></span><span></span><span></span></div>
-      <div class="address-bar">https://home.duyiliu.top · Claude-style aligned workspace redesign</div>
+      <div class="address-bar">https://home.duyiliu.top · 私人工作台 · 本地优先</div>
     </div>
 
     <div class="page-shell">
@@ -140,10 +140,10 @@
               </div>
               <p class="ai-prompt">帮我把今天的待办、最近项目和常用工具整理成一个可执行清单，并按优先级排序。</p>
               <div class="ai-actions">
-                <button type="button">生成摘要</button>
-                <button type="button">拆分任务</button>
-                <button type="button">打开项目</button>
-                <button type="button" onclick="document.querySelector('#noteBody').focus()">记录灵感</button>
+                <button id="aiSummarize" type="button">生成摘要</button>
+                <button id="aiSplitTask" type="button">拆分任务</button>
+                <button id="aiOpenProject" type="button">打开项目</button>
+                <button id="aiCapture" type="button">记录灵感</button>
               </div>
             </article>
           </div>

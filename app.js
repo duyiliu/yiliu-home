@@ -118,6 +118,12 @@ function bindEvents() {
   $("#toggleSourceForm").addEventListener("click", () => toggle("#sourceForm"));
   $("#clearDoneButton").addEventListener("click", clearDoneTasks);
   $("#noteBody").addEventListener("input", scheduleNoteSave);
+  $("#aiSummarize").addEventListener("click", handleSummarize);
+  $("#aiSplitTask").addEventListener("click", () => $("#taskInput").focus());
+  $("#aiOpenProject").addEventListener("click", () =>
+    window.open("https://github.com/duyiliu", "_blank", "noopener,noreferrer")
+  );
+  $("#aiCapture").addEventListener("click", () => $("#noteBody").focus());
 
   $("#prevMonthBtn").addEventListener("click", handlePrevMonth);
   $("#nextMonthBtn").addEventListener("click", handleNextMonth);
@@ -203,6 +209,34 @@ function localUpdate(table, id, patch) {
 function localDelete(table, id) {
   state[table] = state[table].filter((row) => row.id !== id);
   saveLocalData();
+}
+
+function buildDailySummary() {
+  const lines = [];
+  const openTasks = state.tasks.filter((t) => !t.done);
+  lines.push(`今日待办（${openTasks.length} 项）：`);
+  openTasks.forEach((t) => lines.push(`- [${priorityText(t.priority)}] ${t.title}`));
+  lines.push("");
+  lines.push(`快捷入口（${state.links.length}）：`);
+  state.links.slice(0, 8).forEach((l) => lines.push(`- ${l.title}: ${l.url}`));
+  lines.push("");
+  if (state.note?.body) {
+    lines.push("随手记：");
+    lines.push(state.note.body);
+  }
+  return lines.join("\n");
+}
+
+async function handleSummarize() {
+  const text = buildDailySummary();
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus("今日摘要已复制到剪贴板", "ok");
+  } catch (error) {
+    const prompt = $(".ai-prompt");
+    if (prompt) prompt.textContent = text;
+    setStatus("摘要已生成（显示在面板）", "ok");
+  }
 }
 
 function loadDashboard() {
@@ -583,14 +617,6 @@ function handleSearch(event) {
 
   const url = looksLikeUrl(query) ? normalizeUrl(query) : SEARCH_ENGINES[engine].replace("%s", encodeURIComponent(query));
   window.open(url, "_blank", "noopener,noreferrer");
-}
-
-
-
-function setBusy(isBusy) {
-  $$("button").forEach((button) => {
-    button.disabled = isBusy;
-  });
 }
 
 function loadJson(key) {
