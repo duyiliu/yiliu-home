@@ -1,5 +1,4 @@
-const CONFIG_KEY = "yiliu.home.supabase.config";
-const SESSION_KEY = "yiliu.home.supabase.session";
+const DATA_KEY = "yiliu.home.data";
 const TIMER_KEY = "yiliu.home.focus.seconds";
 
 const SEARCH_ENGINES = {
@@ -60,26 +59,33 @@ const FAMOUS_QUOTES = [
   { text: "Code is poetry.", author: "WordPress" }
 ];
 
-function getStaticSupabaseConfig() {
-  const supabase = window.YILIU_HOME_CONFIG?.supabase;
-  if (!supabase?.url || !supabase?.anonKey) return null;
-  return {
-    url: normalizeSupabaseUrl(supabase.url),
-    anonKey: supabase.anonKey.trim(),
-  };
+function loadLocalData() {
+  const stored = loadJson(DATA_KEY);
+  if (stored) {
+    state.links = stored.links || [];
+    state.tasks = stored.tasks || [];
+    state.sources = stored.sources || [];
+    state.feedItems = stored.feedItems || [];
+    state.note = stored.note || null;
+    state.habits = stored.habits || [];
+  }
 }
 
-function getInitialSupabaseConfig() {
-  return getStaticSupabaseConfig() || loadJson(CONFIG_KEY);
-}
-
-function hasStaticSupabaseConfig() {
-  return Boolean(getStaticSupabaseConfig());
+function saveLocalData() {
+  localStorage.setItem(
+    DATA_KEY,
+    JSON.stringify({
+      links: state.links,
+      tasks: state.tasks,
+      sources: state.sources,
+      feedItems: state.feedItems,
+      note: state.note,
+      habits: state.habits,
+    })
+  );
 }
 
 const state = {
-  config: getInitialSupabaseConfig(),
-  session: loadJson(SESSION_KEY),
   links: [],
   tasks: [],
   sources: [],
@@ -88,6 +94,7 @@ const state = {
   activeLinkCategory: "全部",
   habits: [],
   noteSaveTimer: null,
+  weather: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -104,24 +111,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function bindEvents() {
   $("#searchForm").addEventListener("submit", handleSearch);
-  $("#configForm").addEventListener("submit", saveConfig);
-  $("#authForm").addEventListener("submit", signIn);
-  $("#signUpButton").addEventListener("click", signUp);
   $("#taskForm").addEventListener("submit", createTask);
   $("#linkForm").addEventListener("submit", createLink);
   $("#sourceForm").addEventListener("submit", createSource);
   $("#toggleLinkForm").addEventListener("click", () => toggle("#linkForm"));
   $("#toggleSourceForm").addEventListener("click", () => toggle("#sourceForm"));
-  $("#refreshFeedsButton").addEventListener("click", refreshFeeds);
   $("#clearDoneButton").addEventListener("click", clearDoneTasks);
   $("#noteBody").addEventListener("input", scheduleNoteSave);
-  $("#settingsToggle").addEventListener("click", () => toggle("#settingsPanel"));
-  $("#settingsClose").addEventListener("click", () => toggle("#settingsPanel", false));
-  $("#showSetupButton").addEventListener("click", () => {
-    toggle("#settingsPanel", false);
-    toggle("#setupPanel", true);
-  });
-  $("#signOutButton").addEventListener("click", signOut);
 
   $("#prevMonthBtn").addEventListener("click", handlePrevMonth);
   $("#nextMonthBtn").addEventListener("click", handleNextMonth);
@@ -150,33 +146,13 @@ function bindEvents() {
 }
 
 async function boot() {
-  renderConfigState();
-  renderConfigFormState();
-  if (!state.config?.url || !state.config?.anonKey) {
-    setStatus("未连接 Supabase", "idle");
-    toggle("#setupPanel", true);
-    return;
+  loadLocalData();
+  const isFirstUse = !state.links.length && !state.tasks.length && !state.sources.length && !state.note && !state.habits.length;
+  if (isFirstUse) {
+    seedLocalData();
   }
-
-  $("#supabaseUrl").value = state.config.url;
-  $("#supabaseAnonKey").value = state.config.anonKey;
-
-  if (!state.session?.access_token) {
-    setStatus("等待登录", "idle");
-    toggle("#setupPanel", true);
-    return;
-  }
-
-  try {
-    await ensureSession();
-    await loadDashboard();
-    toggle("#setupPanel", false);
-    setStatus("已同步", "ok");
-  } catch (error) {
-    console.error(error);
-    setStatus(error.message || "连接失败", "error");
-    toggle("#setupPanel", true);
-  }
+  renderAll();
+  setStatus("本地存储", "ok");
 }
 
 function renderClock() {
@@ -198,346 +174,92 @@ function renderClock() {
   $("#dateLabel").textContent = date;
 }
 
-function renderConfigState() {
-  const urlNode = $("#settingsUrl");
-  const userNode = $("#settingsUser");
-  const sessionNode = $("#sessionLabel");
-  
-  if (urlNode) urlNode.textContent = state.config?.url || "未配置";
-  if (userNode) userNode.textContent = state.session?.user?.email || "未登录";
-  if (sessionNode) sessionNode.textContent = state.session?.user?.email || "等待连接";
-}
-
-function renderConfigFormState() {
-  const configForm = $("#configForm");
-  const urlInput = $("#supabaseUrl");
-  const anonKeyInput = $("#supabaseAnonKey");
-  const fixedConfig = getStaticSupabaseConfig();
-
-  if (!configForm || !urlInput || !anonKeyInput) return;
-
-  if (fixedConfig) {
-    state.config = fixedConfig;
-    urlInput.value = fixedConfig.url;
-    anonKeyInput.value = fixedConfig.anonKey;
-    configForm.classList.add("hidden");
-    return;
-  }
-
-  configForm.classList.remove("hidden");
-}
-
 function setStatus(message, type = "idle") {
   const node = $("#syncStatus");
+  if (!node) return;
   node.textContent = message;
   node.className = `status-pill is-${type}`;
 }
 
-async function saveConfig(event) {
-  event.preventDefault();
-  if (hasStaticSupabaseConfig()) {
-    state.config = getStaticSupabaseConfig();
-    renderConfigState();
-    renderConfigFormState();
-    setStatus("Supabase 项目配置已内置，请直接登录", "ok");
-    return;
-  }
-  const url = normalizeSupabaseUrl($("#supabaseUrl").value);
-  const anonKey = $("#supabaseAnonKey").value.trim();
-  if (!url || !anonKey) return;
-  state.config = { url, anonKey };
-  state.session = null;
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(state.config));
-  localStorage.removeItem(SESSION_KEY);
-  renderConfigState();
-  setStatus("连接已保存，请登录", "ok");
+function uid() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function signIn(event) {
-  event.preventDefault();
-  await authenticate("token?grant_type=password", "登录成功");
+function localRow(table, fields) {
+  const row = { id: uid(), ...fields };
+  state[table].push(row);
+  saveLocalData();
+  return row;
 }
 
-async function signUp() {
-  await authenticate("signup", "账号已创建");
-}
-
-async function authenticate(path, successMessage) {
-  if (!state.config?.url || !state.config?.anonKey) {
-    setStatus("请先保存 Supabase 连接", "error");
-    return;
-  }
-  const email = $("#authEmail").value.trim();
-  const password = $("#authPassword").value;
-  if (!email || !password) return;
-
-  setBusy(true);
-  try {
-    const payload = await authFetch(path, { email, password });
-    if (payload.access_token) {
-      saveSession(payload);
-      await loadDashboard();
-      toggle("#setupPanel", false);
-      setStatus(successMessage, "ok");
-      return;
-    }
-    setStatus("账号已创建。若开启邮件确认，请先确认邮件后再登录", "ok");
-  } catch (error) {
-    console.error(error);
-    setStatus(friendlyAuthError(error), "error");
-  } finally {
-    setBusy(false);
+function localUpdate(table, id, patch) {
+  const idx = state[table].findIndex((row) => row.id === id);
+  if (idx !== -1) {
+    state[table][idx] = { ...state[table][idx], ...patch };
+    saveLocalData();
   }
 }
 
-async function signOut() {
-  state.session = null;
-  localStorage.removeItem(SESSION_KEY);
-  state.links = [];
-  state.tasks = [];
-  state.sources = [];
-  state.feedItems = [];
-  state.note = null;
+function localDelete(table, id) {
+  state[table] = state[table].filter((row) => row.id !== id);
+  saveLocalData();
+}
+
+function loadDashboard() {
   renderAll();
-  renderConfigState();
-  toggle("#settingsPanel", false);
-  toggle("#setupPanel", true);
-  setStatus("已退出", "idle");
+  setStatus("已保存", "ok");
 }
 
-async function authFetch(path, body) {
-  const response = await fetch(`${state.config.url}/auth/v1/${path}`, {
-    method: "POST",
-    headers: {
-      apikey: state.config.anonKey,
-      Authorization: `Bearer ${state.config.anonKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  return parseResponse(response);
-}
-
-function friendlyAuthError(error) {
-  const message = String(error?.message || error || "认证失败");
-  const lower = message.toLowerCase();
-  if (lower.includes("invalid login credentials")) {
-    return "账号或密码不正确。若是首次使用，请先创建账号；若已创建，请确认邮箱后再登录";
-  }
-  if (lower.includes("email not confirmed") || lower.includes("email_not_confirmed")) {
-    return "邮箱还未确认。请先点击 Supabase 发出的确认邮件，或在 Auth 设置里关闭 Confirm email";
-  }
-  if (lower.includes("signup disabled")) {
-    return "当前 Supabase 项目禁用了注册。请到 Authentication 设置里开启 Email 注册";
-  }
-  if (lower.includes("user already registered") || lower.includes("already registered")) {
-    return "账号已经存在，请直接登录；如果忘记密码，需要在 Supabase Auth 里重置密码";
-  }
-  if (lower.includes("failed to fetch") || lower.includes("networkerror")) {
-    return "无法连接 Supabase。请检查 Project URL、anon key、网络和浏览器是否拦截请求";
-  }
-  return message;
-}
-
-function saveSession(payload) {
-  const expiresAt = Math.floor(Date.now() / 1000) + Number(payload.expires_in || 3600);
-  state.session = { ...payload, expires_at: expiresAt };
-  localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
-  renderConfigState();
-}
-
-async function ensureSession() {
-  if (!state.session?.access_token) {
-    throw new Error("请先登录 Supabase");
-  }
-  const expiresSoon = Number(state.session.expires_at || 0) - Math.floor(Date.now() / 1000) < 90;
-  if (!expiresSoon) return;
-  if (!state.session.refresh_token) {
-    throw new Error("登录已过期，请重新登录");
-  }
-  const refreshed = await authFetch("token?grant_type=refresh_token", {
-    refresh_token: state.session.refresh_token,
-  });
-  saveSession(refreshed);
-}
-
-async function rest(path, options = {}) {
-  await ensureSession();
-  const method = options.method || "GET";
-  const headers = {
-    apikey: state.config.anonKey,
-    Authorization: `Bearer ${state.session.access_token}`,
-    "Content-Type": "application/json",
-  };
-  if (method !== "GET") {
-    headers.Prefer = options.prefer || "return=representation";
-  }
-  const response = await fetch(`${state.config.url}/rest/v1/${path}`, {
-    method,
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-  return parseResponse(response);
-}
-
-async function parseResponse(response) {
-  const text = await response.text();
-  let payload = null;
-  try {
-    payload = text ? JSON.parse(text) : null;
-  } catch {
-    payload = text ? { message: text } : null;
-  }
-  if (!response.ok) {
-    const message = payload?.msg || payload?.message || payload?.error_description || payload?.hint || response.statusText;
-    throw new Error(message);
-  }
-  return payload;
-}
-
-async function loadDashboard() {
-  setStatus("同步中", "idle");
-  const [links, tasks, sources, notes, feedItems] = await Promise.all([
-    rest("links?select=*&order=category.asc,sort_order.asc,title.asc"),
-    rest("tasks?select=*&order=done.asc,sort_order.asc,created_at.desc"),
-    rest("sources?select=*&order=category.asc,sort_order.asc,title.asc"),
-    rest("notes?select=*&kind=in.(scratch,habits)"),
-    rest("feed_items?select=*&order=fetched_at.desc&limit=30"),
-  ]);
-
-  state.links = links || [];
-  state.tasks = tasks || [];
-  state.sources = sources || [];
-  state.feedItems = feedItems || [];
-  state.note = notes?.find(n => n.kind === "scratch") || null;
-  
-  const habitsNote = notes?.find(n => n.kind === "habits") || null;
-  state.habits = habitsNote?.body ? JSON.parse(habitsNote.body).habits : [];
-
-  const isFirstUse = !state.links.length && !state.tasks.length && !state.sources.length && !state.note && !state.habits.length;
-  if (isFirstUse) {
-    await seedMissingData();
-    return loadDashboard();
-  }
-
-  await checkAndAddTargetLinks();
-
-  renderAll();
-  setStatus("已同步", "ok");
-}
-
-async function checkAndAddTargetLinks() {
-  if (!state.session?.user?.id) return;
-  const hasKkj = state.links.some(link => 
-    (link.title || "").toLowerCase().includes("快科技") || 
-    (link.url || "").toLowerCase().includes("kkj.cn")
-  );
-  const hasOsc = state.links.some(link => 
-    (link.title || "").toLowerCase().includes("oschina") || 
-    (link.title || "").toLowerCase().includes("开源中国") || 
-    (link.url || "").toLowerCase().includes("oschina.net")
-  );
-  const newLinks = [];
-  const userId = state.session.user.id;
-  if (!hasKkj) {
-    newLinks.push({
-      user_id: userId,
-      title: "快科技",
-      url: "https://www.kkj.cn/",
-      category: "信息",
-      description: "科技资讯与数码硬件",
-      accent: "#ff7a7a",
-      sort_order: 1
-    });
-  }
-  if (!hasOsc) {
-    newLinks.push({
-      user_id: userId,
-      title: "OSChina",
-      url: "https://www.oschina.net/",
-      category: "开发",
-      description: "开源中国社区",
-      accent: "#8ff0a4",
-      sort_order: 2
-    });
-  }
-  if (newLinks.length > 0) {
-    try {
-      await rest("links", {
-        method: "POST",
-        body: newLinks
-      });
-      const updatedLinks = await rest("links?select=*&order=category.asc,sort_order.asc,title.asc");
-      state.links = updatedLinks || [];
-    } catch (e) {
-      console.error(e);
-    }
-  }
-}
-
-async function seedMissingData() {
-  const userId = state.session.user.id;
-  const jobs = [];
+function seedLocalData() {
   if (!state.links.length) {
-    jobs.push(
-      rest("links", {
-        method: "POST",
-        body: DEFAULT_LINKS.map(([title, url, category, description, accent, sort_order]) => ({
-          user_id: userId,
-          title,
-          url,
-          category,
-          description,
-          accent,
-          sort_order,
-        })),
-      })
-    );
+    state.links = DEFAULT_LINKS.map(([title, url, category, description, accent, sort_order]) => ({
+      id: uid(),
+      title,
+      url,
+      category,
+      description,
+      accent,
+      sort_order,
+    }));
   }
   if (!state.tasks.length) {
-    jobs.push(
-      rest("tasks", {
-        method: "POST",
-        body: DEFAULT_TASKS.map(([title, priority, sort_order]) => ({
-          user_id: userId,
-          title,
-          priority,
-          sort_order,
-        })),
-      })
-    );
+    state.tasks = DEFAULT_TASKS.map(([title, priority, sort_order]) => ({
+      id: uid(),
+      title,
+      priority,
+      sort_order,
+    }));
   }
   if (!state.sources.length) {
-    jobs.push(
-      rest("sources", {
-        method: "POST",
-        body: DEFAULT_SOURCES.map(([title, url, kind, category, description, sort_order]) => ({
-          user_id: userId,
-          title,
-          url,
-          kind,
-          category,
-          description,
-          sort_order,
-        })),
-      })
-    );
+    state.sources = DEFAULT_SOURCES.map(([title, url, kind, category, description, sort_order]) => ({
+      id: uid(),
+      title,
+      url,
+      kind,
+      category,
+      description,
+      sort_order,
+    }));
   }
   if (!state.note) {
-    jobs.push(saveNote("临时想法、会议链接、命令片段都可以先放这里。"));
+    state.note = {
+      id: uid(),
+      kind: "scratch",
+      title: "随手记",
+      body: "临时想法、会议链接、命令片段都可以先放这里。",
+      updated_at: new Date().toISOString(),
+    };
   }
   if (!state.habits || !state.habits.length) {
-    const defaultHabits = [
-      { id: "1", title: "每日阅读 30m", history: [], streak: 0 },
-      { id: "2", title: "每日专注编程", history: [], streak: 0 }
+    state.habits = [
+      { id: uid(), title: "每日阅读 30m", history: [], streak: 0 },
+      { id: uid(), title: "每日专注编程", history: [], streak: 0 },
     ];
-    jobs.push(saveHabits(defaultHabits));
   }
-  await Promise.all(jobs);
+  saveLocalData();
 }
 
 function renderAll() {
-  renderConfigState();
   renderMetrics();
   renderTasks();
   renderLinks();
@@ -712,7 +434,7 @@ function renderFeedItems() {
   list.innerHTML = "";
   if (!state.feedItems.length) {
     list.className = "feed-list empty-state";
-    list.textContent = "还没有内容。点击刷新 RSS，或先部署 refresh-feeds Edge Function。";
+    list.textContent = "还没有内容。本地模式下仅管理信息源，RSS 抓取已停用。";
     return;
   }
   for (const item of state.feedItems) {
@@ -740,139 +462,78 @@ function renderNote() {
   }
   const savedNode = $("#noteSaved");
   if (state.note?.updated_at) {
-    savedNode.textContent = "已同步";
+    savedNode.textContent = "已保存";
     savedNode.className = "mini-pill is-ok";
   } else {
-    savedNode.textContent = "未同步";
+    savedNode.textContent = "未保存";
     savedNode.className = "mini-pill";
   }
 }
 
-async function createTask(event) {
+function createTask(event) {
   event.preventDefault();
   const title = $("#taskInput").value.trim();
   if (!title) return;
-  await mutate(() =>
-    rest("tasks", {
-      method: "POST",
-      body: {
-        user_id: state.session.user.id,
-        title,
-        priority: $("#taskPriority").value,
-        sort_order: Date.now(),
-      },
-    })
-  );
+  localRow("tasks", {
+    title,
+    priority: $("#taskPriority").value,
+    sort_order: Date.now(),
+    done: false,
+  });
   $("#taskInput").value = "";
+  loadDashboard();
 }
 
-async function updateTask(id, patch) {
+function updateTask(id, patch) {
   const payload = { ...patch };
   if (Object.prototype.hasOwnProperty.call(patch, "done")) {
     payload.completed_at = patch.done ? new Date().toISOString() : null;
   }
-  await mutate(() => rest(`tasks?id=eq.${id}`, { method: "PATCH", body: payload }));
+  localUpdate("tasks", id, payload);
+  loadDashboard();
 }
 
-async function clearDoneTasks() {
-  const done = state.tasks.filter((task) => task.done);
-  await mutate(() => Promise.all(done.map((task) => rest(`tasks?id=eq.${task.id}`, { method: "DELETE" }))));
+function clearDoneTasks() {
+  state.tasks = state.tasks.filter((task) => !task.done);
+  saveLocalData();
+  loadDashboard();
 }
 
-async function createLink(event) {
+function createLink(event) {
   event.preventDefault();
-  await mutate(() =>
-    rest("links", {
-      method: "POST",
-      body: {
-        user_id: state.session.user.id,
-        title: $("#linkTitle").value.trim(),
-        url: normalizeUrl($("#linkUrl").value),
-        category: $("#linkCategory").value.trim() || "常用",
-        accent: randomAccent(),
-        sort_order: Date.now(),
-      },
-    })
-  );
+  localRow("links", {
+    title: $("#linkTitle").value.trim(),
+    url: normalizeUrl($("#linkUrl").value),
+    category: $("#linkCategory").value.trim() || "常用",
+    description: "",
+    accent: randomAccent(),
+    sort_order: Date.now(),
+  });
   $("#linkForm").reset();
   $("#linkCategory").value = "常用";
   toggle("#linkForm", false);
+  loadDashboard();
 }
 
-async function createSource(event) {
+function createSource(event) {
   event.preventDefault();
-  await mutate(() =>
-    rest("sources", {
-      method: "POST",
-      body: {
-        user_id: state.session.user.id,
-        title: $("#sourceTitle").value.trim(),
-        url: normalizeUrl($("#sourceUrl").value),
-        category: $("#sourceCategory").value.trim() || "资讯",
-        kind: $("#sourceKind").value,
-        sort_order: Date.now(),
-      },
-    })
-  );
+  localRow("sources", {
+    title: $("#sourceTitle").value.trim(),
+    url: normalizeUrl($("#sourceUrl").value),
+    category: $("#sourceCategory").value.trim() || "资讯",
+    kind: $("#sourceKind").value,
+    description: "",
+    sort_order: Date.now(),
+  });
   $("#sourceForm").reset();
   $("#sourceCategory").value = "技术";
   toggle("#sourceForm", false);
+  loadDashboard();
 }
 
-async function refreshFeeds() {
-  if (!state.session?.access_token) {
-    setStatus("请先登录", "error");
-    toggle("#setupPanel", true);
-    return;
-  }
-  setBusy(true);
-  setStatus("刷新 RSS 中", "idle");
-  try {
-    await invokeFunction("refresh-feeds");
-    await loadDashboard();
-    setStatus("RSS 已刷新", "ok");
-  } catch (error) {
-    console.error(error);
-    setStatus(error.message || "RSS 刷新失败", "error");
-  } finally {
-    setBusy(false);
-  }
-}
-
-async function invokeFunction(name, body = {}) {
-  await ensureSession();
-  const response = await fetch(`${state.config.url}/functions/v1/${name}`, {
-    method: "POST",
-    headers: {
-      apikey: state.config.anonKey,
-      Authorization: `Bearer ${state.session.access_token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  return parseResponse(response);
-}
-
-async function deleteRow(table, id) {
-  await mutate(() => rest(`${table}?id=eq.${id}`, { method: "DELETE" }));
-}
-
-async function mutate(operation) {
-  if (!state.session?.access_token) {
-    setStatus("请先登录", "error");
-    toggle("#setupPanel", true);
-    return;
-  }
-  setBusy(true);
-  try {
-    await operation();
-    await loadDashboard();
-  } catch (error) {
-    console.error(error);
-    setStatus(error.message || "操作失败", "error");
-  } finally {
-    setBusy(false);
-  }
+function deleteRow(table, id) {
+  localDelete(table, id);
+  loadDashboard();
 }
 
 function scheduleNoteSave() {
@@ -881,31 +542,31 @@ function scheduleNoteSave() {
   savedNode.className = "mini-pill";
   clearTimeout(state.noteSaveTimer);
   const value = $("#noteBody").value;
-  state.noteSaveTimer = setTimeout(() => saveNote(value).catch((error) => {
-    console.error(error);
-    savedNode.textContent = "保存失败";
-    savedNode.className = "mini-pill is-error";
-  }), 650);
+  state.noteSaveTimer = setTimeout(() => {
+    try {
+      saveNote(value);
+    } catch (error) {
+      console.error(error);
+      savedNode.textContent = "保存失败";
+      savedNode.className = "mini-pill is-error";
+    }
+  }, 650);
 }
 
-async function saveNote(body) {
-  if (!state.session?.user?.id) return null;
-  const payload = await rest("notes?on_conflict=user_id,kind", {
-    method: "POST",
-    prefer: "resolution=merge-duplicates,return=representation",
-    body: {
-      user_id: state.session.user.id,
-      kind: "scratch",
-      title: "随手记",
-      body,
-      updated_at: new Date().toISOString(),
-    },
-  });
-  state.note = payload?.[0] || state.note;
+function saveNote(body) {
+  state.note = {
+    ...(state.note || {}),
+    id: state.note?.id || uid(),
+    kind: "scratch",
+    title: "随手记",
+    body,
+    updated_at: new Date().toISOString(),
+  };
+  saveLocalData();
   const savedNode = $("#noteSaved");
-  savedNode.textContent = "已同步";
+  savedNode.textContent = "已保存";
   savedNode.className = "mini-pill is-ok";
-  return payload;
+  return state.note;
 }
 
 function handleSearch(event) {
@@ -927,7 +588,7 @@ function handleSearch(event) {
 
 
 function setBusy(isBusy) {
-  $$('button').forEach((button) => {
+  $$("button").forEach((button) => {
     button.disabled = isBusy;
   });
 }
@@ -943,12 +604,9 @@ function loadJson(key) {
 
 function toggle(selector, forced) {
   const node = $(selector);
+  if (!node) return;
   const shouldShow = typeof forced === "boolean" ? forced : node.classList.contains("hidden");
   node.classList.toggle("hidden", !shouldShow);
-}
-
-function normalizeSupabaseUrl(value) {
-  return value.trim().replace(/\/+$/, "");
 }
 
 function normalizeUrl(value) {
@@ -1209,23 +867,11 @@ function handleNextMonth() {
 // ==========================================
 // HABIT TRACKER COMPONENT
 // ==========================================
-async function saveHabits(habitsList) {
-  if (!state.session?.user?.id) return null;
-  const payload = await rest("notes?on_conflict=user_id,kind", {
-    method: "POST",
-    prefer: "resolution=merge-duplicates,return=representation",
-    body: {
-      user_id: state.session.user.id,
-      kind: "habits",
-      title: "习惯打卡",
-      body: JSON.stringify({ habits: habitsList }),
-      updated_at: new Date().toISOString(),
-    },
-  });
-  const habitsNote = payload?.[0] || null;
-  state.habits = habitsNote?.body ? JSON.parse(habitsNote.body).habits : state.habits;
+function saveHabits(habitsList) {
+  state.habits = habitsList;
+  saveLocalData();
   renderHabits();
-  return payload;
+  return state.habits;
 }
 
 function renderHabits() {
@@ -1302,13 +948,7 @@ function formatDateString(d) {
   return `${year}-${month}-${day}`;
 }
 
-async function toggleHabitCheck(habitId) {
-  if (!state.session?.access_token) {
-    setStatus("请先登录", "error");
-    toggle("#setupPanel", true);
-    return;
-  }
-  
+function toggleHabitCheck(habitId) {
   const todayStr = getTodayString();
   const updated = state.habits.map(habit => {
     if (habit.id !== habitId) return habit;
@@ -1325,15 +965,7 @@ async function toggleHabitCheck(habitId) {
     return { ...habit, history, streak };
   });
   
-  setBusy(true);
-  try {
-    await saveHabits(updated);
-  } catch (err) {
-    console.error("Failed to check habit:", err);
-    setStatus("打卡更新失败", "error");
-  } finally {
-    setBusy(false);
-  }
+  saveHabits(updated);
 }
 
 function calculateStreak(history) {
@@ -1357,42 +989,25 @@ function calculateStreak(history) {
   return streak;
 }
 
-async function createHabit(event) {
+function createHabit(event) {
   event.preventDefault();
   const title = $("#habitTitle").value.trim();
   if (!title) return;
   
   const newHabit = {
-    id: String(Date.now()),
+    id: uid(),
     title: title,
     history: [],
     streak: 0
   };
   
   const updated = [...state.habits, newHabit];
-  
-  setBusy(true);
-  try {
-    await saveHabits(updated);
-    $("#habitTitle").value = "";
-    toggle("#habitForm", false);
-  } catch (err) {
-    console.error("Failed to create habit:", err);
-    setStatus("习惯创建失败", "error");
-  } finally {
-    setBusy(false);
-  }
+  saveHabits(updated);
+  $("#habitTitle").value = "";
+  toggle("#habitForm", false);
 }
 
-async function deleteHabit(habitId) {
+function deleteHabit(habitId) {
   const updated = state.habits.filter(habit => habit.id !== habitId);
-  setBusy(true);
-  try {
-    await saveHabits(updated);
-  } catch (err) {
-    console.error("Failed to delete habit:", err);
-    setStatus("习惯删除失败", "error");
-  } finally {
-    setBusy(false);
-  }
+  saveHabits(updated);
 }

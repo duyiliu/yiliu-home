@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="一个连接 Supabase 的 Claude Code 风格个人浏览器首页，用于搜索、快捷入口、待办、便签和信息源管理。"
+      content="一个 Claude Code 风格的个人浏览器首页，用于搜索、快捷入口、待办、便签和信息源管理，数据保存在本地浏览器。"
     />
     <title>一流工作台 | 浏览器首页</title>
     <link
@@ -34,8 +34,7 @@
           <span id="weekdayLabel" class="ghost-chip">--</span>
           <span id="clockLabel" class="clock-pill">--:--</span>
           <span class="ghost-chip">⌘ K 快捷命令</span>
-          <span id="syncStatus" class="status-pill is-idle">未连接 Supabase</span>
-          <button id="settingsToggle" class="dark-button" type="button">打开设置</button>
+          <span id="syncStatus" class="status-pill is-idle">本地存储</span>
         </div>
       </header>
 
@@ -59,13 +58,12 @@
             <a href="#launch"><span>AI</span>AI 工具</a>
             <a href="#radar"><span>R</span>信息雷达</a>
             <a href="#calendar"><span>C</span>日历动态</a>
-            <a href="#settingsPanel"><span>S</span>系统设置</a>
           </nav>
 
           <section class="quote-card panel-card">
             <p class="quote-text">“少一点装饰，多一点秩序。让首页像一个可以马上开始工作的安静书桌。”</p>
             <span class="quote-author">— 一流工作台</span>
-            <div><span class="dot"></span><strong>本地优先</strong><em>云端未连接</em></div>
+            <div><span class="dot"></span><strong>本地优先</strong><em>数据存于浏览器</em></div>
           </section>
         </aside>
 
@@ -100,28 +98,6 @@
             </div>
           </section>
 
-          <section id="setupPanel" class="setup-panel panel-card hidden" aria-live="polite">
-            <div>
-              <p class="eyebrow">Supabase</p>
-              <h2>连接数据空间</h2>
-              <p>登录后同步快捷入口、今日重点、随手记和习惯卡。</p>
-            </div>
-            <form id="configForm" class="panel-form">
-              <label><span>Project URL</span><input id="supabaseUrl" type="url" placeholder="https://xxxx.supabase.co" required /></label>
-              <label><span>Anon Key</span><input id="supabaseAnonKey" type="text" autocomplete="off" spellcheck="false" required /></label>
-              <button type="submit">保存配置</button>
-            </form>
-            <form id="authForm" class="panel-form">
-              <label><span>Email</span><input id="authEmail" type="email" autocomplete="email" required /></label>
-              <label><span>Password</span><input id="authPassword" type="password" autocomplete="current-password" required /></label>
-              <div class="split-actions">
-                <button type="submit">登录</button>
-                <button id="signUpButton" class="ghost-button" type="button">注册</button>
-              </div>
-              <p class="form-hint">首次使用请先创建账号；如果开启邮件确认，需要先确认邮件。</p>
-            </form>
-          </section>
-
           <div class="mid-grid">
             <article class="widget tasks-widget panel-card">
               <div class="widget-head">
@@ -137,7 +113,7 @@
                 </select>
                 <button type="submit">Add</button>
               </form>
-              <div id="taskList" class="task-list empty-state">登录后同步今日待办。</div>
+              <div id="taskList" class="task-list empty-state">还没有待办。</div>
             </article>
 
             <article class="ai-panel panel-card">
@@ -167,14 +143,13 @@
               <button type="submit">Save</button>
             </form>
             <div id="linkFilters" class="filter-row"></div>
-            <div id="linkGrid" class="link-grid empty-state">连接 Supabase 后显示快捷入口。</div>
+            <div id="linkGrid" class="link-grid empty-state">还没有快捷入口。</div>
           </article>
 
           <article id="radar" class="widget sources-widget panel-card">
             <div class="widget-head">
               <div><h2>信息雷达</h2><p>AI 资讯、项目动态、服务器状态统一进入。</p></div>
               <div class="widget-actions">
-                <button id="refreshFeedsButton" class="ghost-button small" type="button">Refresh RSS</button>
                 <button id="toggleSourceForm" class="ghost-button small" type="button">New source</button>
               </div>
             </div>
@@ -186,20 +161,13 @@
               <button type="submit">Save</button>
             </form>
             <div class="radar-columns">
-              <div><p class="eyebrow subhead">Sources</p><div id="sourceList" class="source-list empty-state">登录后同步你关心的信息源。</div></div>
-              <div><p class="eyebrow subhead">Latest</p><div id="feedList" class="feed-list empty-state">部署 Edge Function 后可刷新 RSS 内容。</div></div>
+              <div><p class="eyebrow subhead">Sources</p><div id="sourceList" class="source-list empty-state">还没有信息源。</div></div>
+              <div><p class="eyebrow subhead">Latest</p><div id="feedList" class="feed-list empty-state">本地模式下仅管理信息源，RSS 抓取已停用。</div></div>
             </div>
           </article>
         </section>
 
         <aside class="right-rail">
-          <section class="connect-card panel-card">
-            <h2>连接数据空间</h2>
-            <p>登录后同步快捷入口、今日重点、随手记和习惯卡。</p>
-            <button id="showSetupButton" type="button">使用 Supabase 登录</button>
-            <div><span class="dot"></span><span id="sessionLabel">等待连接</span><em>Local mode</em></div>
-          </section>
-
           <section id="weatherDisplay" class="weather-card panel-card" role="button" tabindex="0" title="点击自定义城市" aria-label="天气信息，按回车自定义城市">
             <div><strong id="weatherTemp">--°C</strong><span id="weatherLoc">定位中...</span></div>
             <span id="weatherIcon" class="weather-orb">☀️</span>
@@ -239,7 +207,7 @@
               <input id="habitTitle" type="text" placeholder="Title: 每天喝水" required />
               <button type="submit">Add</button>
             </form>
-            <div id="habitsList" class="habits-list empty-state">登录后同步习惯打卡。</div>
+            <div id="habitsList" class="habits-list empty-state">还没有习惯打卡。</div>
           </article>
         </aside>
       </main>
@@ -250,23 +218,6 @@
       </footer>
     </div>
 
-    <aside id="settingsPanel" class="settings-panel hidden" aria-label="设置面板">
-      <div class="settings-card panel-card">
-        <div class="widget-head">
-          <div><p class="eyebrow">Settings</p><h2>数据与账号</h2></div>
-          <button id="settingsClose" class="ghost-button small" type="button">Close</button>
-        </div>
-        <dl class="settings-list">
-          <div><dt>Supabase URL</dt><dd id="settingsUrl">未配置</dd></div>
-          <div><dt>当前账号</dt><dd id="settingsUser">未登录</dd></div>
-        </dl>
-        <div class="split-actions">
-          <button type="button" onclick="document.querySelector('#settingsPanel').classList.add('hidden'); document.querySelector('#setupPanel').classList.remove('hidden')">Configure</button>
-          <button id="signOutButton" class="danger-button" type="button">Sign out</button>
-        </div>
-      </div>
-    </aside>
-
     <template id="taskTemplate">
       <label class="task-item">
         <input type="checkbox" />
@@ -276,7 +227,6 @@
       </label>
     </template>
 
-    <script src="config.js?v=1.0"></script>
-    <script src="app.js?v=1.2" defer></script>
+    <script src="app.js?v=1.4" defer></script>
   </body>
 </html>
