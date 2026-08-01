@@ -15,6 +15,23 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="lockScreen" class="lock-screen" aria-label="访问密码">
+      <div class="lock-card">
+        <div class="lock-mark">流</div>
+        <h1>一流工作台</h1>
+        <p>私人首页 · 输入访问密码解锁</p>
+        <input
+          id="lockPassword"
+          type="password"
+          placeholder="访问密码"
+          autocomplete="current-password"
+          spellcheck="false"
+        />
+        <button id="lockSubmit" class="dark-button" type="button">解锁</button>
+        <p id="lockError" class="lock-error"></p>
+      </div>
+    </div>
+
     <div class="browser-frame" aria-hidden="true">
       <div class="window-controls"><span></span><span></span><span></span></div>
       <div class="address-bar">https://home.duyiliu.top · Claude-style aligned workspace redesign</div>
@@ -227,6 +244,7 @@
       </label>
     </template>
 
+    <script src="auth.js?v=1.0"></script>
     <script src="app.js?v=1.4" defer></script>
   </body>
 </html>
