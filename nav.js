@@ -81,22 +81,22 @@ function renderGrid(items) {
 
   for (const b of visible) {
     const card = document.createElement("article");
-    card.className = "nav-card" + (b.isCustom ? " is-custom" : "");
+    card.className = "bk-card" + (b.isCustom ? " is-custom" : "");
     let host = "";
     try {
       host = new URL(b.url).hostname.replace(/^www\./, "");
     } catch {}
     card.innerHTML = `
-      <div class="nav-card-icon">
+      <div class="bk-card-icon">
         <img src="https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(host)}" alt="" loading="lazy"
              onerror="this.classList.add('hidden')" />
         <span class="icon-fallback">${escapeHtml((b.name || "?").slice(0, 1).toUpperCase())}</span>
       </div>
-      <div class="nav-card-body">
-        <span class="nav-card-title" title="${escapeAttr(b.name)}">${escapeHtml(b.name)}</span>
-        <span class="nav-card-host" title="${escapeAttr(b.url)}">${escapeHtml(host || b.url)}</span>
+      <div class="bk-card-body">
+        <span class="bk-card-title" title="${escapeAttr(b.name)}">${escapeHtml(b.name)}</span>
+        <span class="bk-card-host" title="${escapeAttr(b.url)}">${escapeHtml(host || b.url)}</span>
       </div>
-      <div class="nav-card-actions">
+      <div class="bk-card-actions">
         <a class="nav-open-btn" href="${escapeAttr(b.url)}" target="_blank" rel="noreferrer noopener" title="打开">↗</a>
         <button class="nav-del-btn" type="button" title="删除">×</button>
       </div>
