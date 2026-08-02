@@ -1,7 +1,7 @@
 /* yiliu-home Service Worker — stale-while-revalidate
  * 命中缓存立即返回，同时后台拉新并更新缓存；离线时用缓存兜底。
  * 更新站点代码后改 CACHE 版本号即可强制换缓存。 */
-const CACHE = 'yiliu-home-v1';
+const CACHE = 'yiliu-home-v2';
 const CORE = [
   '/',
   '/index.html',

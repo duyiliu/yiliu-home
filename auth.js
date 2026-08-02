@@ -2,7 +2,7 @@
  * 改密码：把 PASSWORD_HASH 换成新密码的 SHA-256 hex（node -e "console.log(require('crypto').createHash('sha256').update('新密码').digest('hex'))"）
  */
 const AUTH_KEY = "yiliu.home.auth";
-const PASSWORD_HASH = "9f8832223d0fc18af44be0c1f44a755f531f9b995796b43d5b3751e44a1c7eca"; // sha256("yiliu-home")
+const PASSWORD_HASH = "1e395ce2ed739e5d69e000b8f0a7959505aba94472f72c0972a98a0b1260a444"; // sha256("Ws00350425")
 
 async function sha256Hex(str) {
   const data = new TextEncoder().encode(str);
