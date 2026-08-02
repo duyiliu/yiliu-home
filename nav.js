@@ -89,7 +89,8 @@ function renderGrid(items) {
     card.innerHTML = `
       <div class="nav-card-icon">
         <img src="https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(host)}" alt="" loading="lazy"
-             onerror="this.style.display='none'" />
+             onerror="this.classList.add('hidden')" />
+        <span class="icon-fallback">${escapeHtml((b.name || "?").slice(0, 1).toUpperCase())}</span>
       </div>
       <div class="nav-card-body">
         <span class="nav-card-title" title="${escapeAttr(b.name)}">${escapeHtml(b.name)}</span>
