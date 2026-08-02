@@ -1,7 +1,7 @@
-/* yiliu-home Service Worker — stale-while-revalidate
- * 命中缓存立即返回，同时后台拉新并更新缓存；离线时用缓存兜底。
+/* yiliu-home Service Worker
+ * 页面导航 = network-first（在线拿最新，改密码立即生效）；静态资源 = stale-while-revalidate。
  * 更新站点代码后改 CACHE 版本号即可强制换缓存。 */
-const CACHE = 'yiliu-home-v2';
+const CACHE = 'yiliu-home-v3';
 const CORE = [
   '/',
   '/index.html',
@@ -41,6 +41,22 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // 页面导航：网络优先——在线永远拿最新页面（改密码/改版能立即生效），离线才用缓存兜底
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(event.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // 静态资源：stale-while-revalidate
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
