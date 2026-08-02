@@ -45,7 +45,7 @@ function renderGroups(items) {
   for (const g of groups) {
     const item = document.createElement("div");
     item.className = "group-item" + (g === state.activeGroup ? " is-active" : "");
-    item.innerHTML = `<span>${escapeHtml(g)}</span><span class="g-count">${g === "全部" ? items.length : counts[g]}</span>`;
+    item.innerHTML = `<span class="g-name">${escapeHtml(g)}</span><span class="g-count">${g === "全部" ? items.length : counts[g]}</span>`;
     item.addEventListener("click", () => {
       state.activeGroup = g;
       renderGroups(items);
@@ -63,7 +63,6 @@ function renderGrid(items) {
     const inGroup = state.activeGroup === "全部" || (b.group || "常用") === state.activeGroup;
     if (!inGroup) return false;
     if (!state.query) return true;
-    // 无空格归一化匹配：搜 newapi 也能命中 "New API"
     const q = state.query.toLowerCase().replace(/\s+/g, "");
     const name = (b.name || "").toLowerCase().replace(/\s+/g, "");
     const url = (b.url || "").toLowerCase();
@@ -71,30 +70,44 @@ function renderGrid(items) {
     return name.includes(q) || url.includes(q) || group.includes(q);
   });
   empty.classList.toggle("hidden", visible.length > 0);
+
+  // 分组标题
+  if (state.activeGroup !== "全部" && visible.length > 0) {
+    const head = document.createElement("div");
+    head.className = "nav-section-head";
+    head.innerHTML = `<h2>${escapeHtml(state.activeGroup)}</h2><span class="section-count">${visible.length}</span>`;
+    grid.parentNode.insertBefore(head, grid);
+  }
+
   for (const b of visible) {
     const card = document.createElement("article");
-    card.className = "nav-card";
+    card.className = "nav-card" + (b.isCustom ? " is-custom" : "");
     let host = "";
     try {
       host = new URL(b.url).hostname.replace(/^www\./, "");
     } catch {}
     card.innerHTML = `
-      <div class="nav-card-top">
+      <div class="nav-card-icon">
         <img src="https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(host)}" alt="" loading="lazy"
-             onerror="this.style.visibility='hidden'" />
-        <div class="nav-card-title">
-          <strong title="${escapeAttr(b.name)}">${escapeHtml(b.name)}</strong>
-          <span title="${escapeAttr(b.url)}">${escapeHtml(host || b.url)}</span>
-        </div>
+             onerror="this.style.display='none'" />
+      </div>
+      <div class="nav-card-body">
+        <span class="nav-card-title" title="${escapeAttr(b.name)}">${escapeHtml(b.name)}</span>
+        <span class="nav-card-host" title="${escapeAttr(b.url)}">${escapeHtml(host || b.url)}</span>
       </div>
       <div class="nav-card-actions">
-        <a class="nav-open" href="${escapeAttr(b.url)}" target="_blank" rel="noreferrer noopener">打开 ↗</a>
-        <button class="nav-del" type="button" title="从导航删除">×</button>
+        <a class="nav-open-btn" href="${escapeAttr(b.url)}" target="_blank" rel="noreferrer noopener" title="打开">↗</a>
+        <button class="nav-del-btn" type="button" title="删除">×</button>
       </div>
     `;
-    card.querySelector(".nav-del").addEventListener("click", () => removeBookmark(b));
+    card.querySelector(".nav-del-btn").addEventListener("click", () => removeBookmark(b));
     grid.appendChild(card);
   }
+
+  // 清理旧标题
+  document.querySelectorAll(".nav-section-head").forEach((h) => {
+    if (h.nextElementSibling !== grid) h.remove();
+  });
 }
 
 function renderAll() {
