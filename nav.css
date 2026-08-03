@@ -4,7 +4,15 @@
    ========================================== */
 
 /* 顶部栏：深色玻璃质感 */
+.nav-shell {
+  width: min(1280px, calc(100vw - 32px));
+  margin: 16px auto 32px;
+}
 .nav-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   background: rgba(48, 40, 32, 0.96) !important;
   border-color: transparent !important;
   box-shadow: 0 8px 24px rgba(28, 22, 16, 0.18) !important;
@@ -18,16 +26,29 @@
 
 /* 顶部搜索框：深底亮字 */
 .nav-search-wrap {
+  display: flex;
+  flex: 1 1 320px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
-.nav-search-wrap input { color: #fff7e7 !important; }
+.nav-search-wrap input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  color: #fff7e7 !important;
+}
+.nav-search-icon,
+.nav-search-wrap .ghost-chip { flex: none; }
 .nav-search-wrap input::placeholder { color: #9a8a78; }
 .nav-search-icon { color: #9a8a78 !important; }
 .nav-topbar .ghost-chip { background: rgba(255,255,255,0.08); color: #eadccd; border-color: transparent; }
 
 /* 主体布局 */
 .nav-layout {
+  display: grid;
   grid-template-columns: 200px 1fr;
   gap: 18px;
   margin-top: 18px;
@@ -201,6 +222,7 @@
 .bk-card-body {
   flex: 1;
   min-width: 0;
+  padding-right: 82px;
 }
 .bk-card-title {
   display: block;
@@ -239,7 +261,8 @@
   opacity: 0;
   transition: opacity 180ms ease;
 }
-.bk-card:hover .bk-card-actions { opacity: 1; }
+.bk-card:hover .bk-card-actions,
+.bk-card:focus-within .bk-card-actions { opacity: 1; }
 
 .nav-open-btn {
   display: inline-flex;
@@ -350,7 +373,22 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  .group-item { flex: none; }
+  .group-item { flex: none; min-height: 44px; }
+  .nav-actions button { min-height: 44px; }
   .nav-grid { grid-template-columns: 1fr; }
-  .bk-card-actions { opacity: 1; }
+  .bk-card { flex-wrap: wrap; align-items: flex-start; }
+  .bk-card-body { padding-right: 0; }
+  .bk-card-actions {
+    position: static;
+    flex: 0 0 100%;
+    width: 100%;
+    justify-content: flex-end;
+    transform: none;
+    opacity: 1;
+  }
+  .nav-open-btn,
+  .nav-del-btn {
+    width: 44px;
+    height: 44px;
+  }
 }
