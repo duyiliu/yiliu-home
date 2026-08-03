@@ -471,7 +471,7 @@ window.NAV_BOOKMARKS = [
   "url": "https://qingqu.bestaihub.site/"
  },
  {
-  "group": "vpn",
+  "group": "科学上网",
   "name": "仪表盘 - 良心云",
   "url": "https://xn--9kqz23b19z.com/#/dashboard"
  },
