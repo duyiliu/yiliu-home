@@ -4,3 +4,5 @@ Thumbs.db
 .gemini/
 *.log
 .omo/
+__pycache__/
+*.py[cod]
