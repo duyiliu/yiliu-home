@@ -1,0 +1,23 @@
+services:
+  yiliu-api:
+    build: .
+    container_name: yiliu-api
+    restart: unless-stopped
+    ports:
+      - "18090:18090"
+    volumes:
+      - /data/services/yiliu-home/data:/app/data
+      - /data/services/yiliu-home/config:/app/config:ro
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "18090", "--ssl-keyfile", "/app/config/tls.key", "--ssl-certfile", "/app/config/tls.crt"]
+    environment:
+      YILIU_PASSWORD: "Ws00350425"
+      YILIU_ORIGIN: "https://home.duyiliu.top"
+      YILIU_DB: "/app/data/yiliu.db"
+      YILIU_SEED: "/app/seed.json"
+    networks:
+      - default
+
+networks:
+  default:
+    name: ai-services
+    external: true

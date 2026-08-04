@@ -25,6 +25,8 @@ async function handleUnlock() {
   const hash = await sha256Hex(value);
   if (hash === PASSWORD_HASH) {
     localStorage.setItem(AUTH_KEY, "1");
+    // 仅当前浏览会话供导航 API 登录用；不把明文密码持久化到 localStorage。
+    sessionStorage.setItem("yiliu.home.nav.password", value);
     input.value = "";
     error.textContent = "";
     unlock();
