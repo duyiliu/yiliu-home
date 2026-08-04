@@ -31,8 +31,8 @@ def check_rate(ip: str):
         raise HTTPException(429, "请求太频繁，稍后再试")
     dq.append(now)
 
-# ── token 存储（内存；重启失效，前端自动重登） ────
-_valid_tokens: set[str] = set()
+# ── token 存储（内存；重启失效） ────────────────
+_valid_tokens: dict[str, float] = {}  # token -> expires_at (Unix epoch)
 
 # ── 数据库 ───────────────────────────────────────
 async def init_db():
@@ -80,7 +80,9 @@ async def require_auth(request: Request):
     if not auth.startswith("Bearer "):
         raise HTTPException(401, "未认证")
     token = auth[7:]
-    if token not in _valid_tokens:
+    expires_at = _valid_tokens.get(token, 0)
+    if expires_at <= time.time():
+        _valid_tokens.pop(token, None)
         raise HTTPException(401, "token 失效，请重新登录")
 
 # ── FastAPI ──────────────────────────────────────
@@ -133,7 +135,7 @@ async def login(req: PasswordReq, request: Request):
     if req.password != PASSWORD:
         raise HTTPException(403, "密码不对")
     token = secrets.token_hex(32)
-    _valid_tokens.add(token)
+    _valid_tokens[token] = time.time() + TOKEN_TTL
     return ok({"token": token, "expires_in": TOKEN_TTL})
 
 @app.get("/api/bookmarks")
