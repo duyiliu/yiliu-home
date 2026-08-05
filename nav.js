@@ -74,6 +74,29 @@ function saveCache(items) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(items));
 }
 
+// ---------- Toast 通知 ----------
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ---------- 状态管理 ----------
+function updateState(patch) {
+  Object.assign(state, patch);
+  if (patch.bookmarks !== undefined) {
+    saveCache(state.bookmarks);
+  }
+  renderAll();
+}
+
 // ---------- 渲染 ----------
 function groupCounts(items) {
   const counts = {};
@@ -179,15 +202,13 @@ async function removeBookmark(b) {
   if (!confirm(`从导航删除「${b.name}」？`)) return;
 
   // 乐观删除：先从内存和缓存移除
-  state.bookmarks = state.bookmarks.filter((x) => x.id !== b.id);
-  saveCache(state.bookmarks);
-  renderAll();
+  updateState({ bookmarks: state.bookmarks.filter((x) => x.id !== b.id) });
 
   if (state.online && b.id) {
     try {
       await apiCall("DELETE", `/api/bookmarks/${b.id}`);
     } catch (e) {
-      console.warn("删除同步失败，将从本地移除但服务器仍保留:", e);
+      showToast(`删除同步失败：${e.message}`, 'error');
       setSyncStatus("同步失败", "is-error");
     }
   }
@@ -202,16 +223,18 @@ async function editBookmark(b) {
   if (grp === null) return;
   const changes = { name: name.trim(), url: url.trim(), grp: grp.trim() || "常用" };
   const index = state.bookmarks.findIndex((x) => x.id === b.id);
-  if (index >= 0) state.bookmarks[index] = { ...b, ...changes };
-  saveCache(state.bookmarks);
-  renderAll();
+  if (index >= 0) {
+    const updated = [...state.bookmarks];
+    updated[index] = { ...b, ...changes };
+    updateState({ bookmarks: updated });
+  }
   if (state.online && b.id) {
     try {
       setSyncStatus("同步中…", "is-syncing");
       await apiCall("PUT", `/api/bookmarks/${b.id}`, changes);
       setSyncStatus("已同步", "is-online");
     } catch (e) {
-      console.warn("编辑同步失败:", e);
+      showToast(`编辑同步失败：${e.message}`, 'error');
       setSyncStatus("同步失败", "is-error");
     }
   }
@@ -248,28 +271,61 @@ async function handleAdd(event) {
       setSyncStatus("同步中…", "is-syncing");
       const json = await apiCall("POST", "/api/bookmarks", { name, url, grp, icon: "", sort: 0 });
       const newBm = { id: json.data.id, name, url, grp, icon: "", sort: 0, is_custom: 1 };
-      state.bookmarks.push(newBm);
-      saveCache(state.bookmarks);
-      renderAll();
+      updateState({ bookmarks: [...state.bookmarks, newBm] });
       setSyncStatus("已同步", "is-online");
       return;
     } catch (e) {
-      console.warn("添加同步失败，降级本地:", e);
+      showToast(`添加同步失败：${e.message}`, 'error');
       setSyncStatus("同步失败", "is-error");
     }
   }
 
   // 离线降级：暂存本地，待下次同步
   const tempId = Date.now();
-  state.bookmarks.push({ id: tempId, name, url, grp, icon: "", sort: 0, is_custom: 1, _offline: true });
-  saveCache(state.bookmarks);
-  renderAll();
+  updateState({ 
+    bookmarks: [...state.bookmarks, { id: tempId, name, url, grp, icon: "", sort: 0, is_custom: 1, _offline: true }]
+  });
 }
 
 // ---------- 搜索 ----------
 function handleSearch() {
   state.query = $("#navSearch").value.trim();
   renderGrid(state.bookmarks);
+}
+
+// ---------- 离线同步队列 ----------
+async function syncOfflineQueue() {
+  const pending = state.bookmarks.filter(b => b._offline);
+  if (pending.length === 0) return;
+  
+  let synced = 0, failed = 0;
+  const updated = [...state.bookmarks];
+  
+  for (const bm of pending) {
+    try {
+      const json = await apiCall("POST", "/api/bookmarks", {
+        name: bm.name, url: bm.url, grp: bm.grp, icon: bm.icon || "", sort: bm.sort || 0
+      });
+      // 用服务器 ID 替换本地临时 ID
+      const index = updated.findIndex(b => b.id === bm.id);
+      if (index >= 0) {
+        updated[index] = { ...bm, id: json.data.id, _offline: undefined };
+      }
+      synced++;
+    } catch (e) {
+      if (e.message.includes('409')) {
+        // URL 已存在，从本地移除重复项
+        const index = updated.findIndex(b => b.id === bm.id);
+        if (index >= 0) updated.splice(index, 1);
+      }
+      failed++;
+    }
+  }
+  
+  if (synced > 0 || failed > 0) {
+    updateState({ bookmarks: updated });
+    showToast(`离线书签同步完成：成功 ${synced} 条${failed > 0 ? `，失败 ${failed} 条` : ''}`, synced > 0 ? 'success' : 'error');
+  }
 }
 
 // ---------- 初始化同步 ----------
@@ -303,13 +359,13 @@ async function syncFromServer() {
       await apiLogin(pwd);
     }
     const items = await fetchBookmarks();
-    state.bookmarks = items;
-    state.online = true;
-    saveCache(items);
-    renderAll();
+    updateState({ bookmarks: items, online: true });
     setSyncStatus("已同步", "is-online");
+    
+    // 同步离线队列
+    await syncOfflineQueue();
   } catch (e) {
-    console.warn("同步失败:", e);
+    showToast(`同步失败：${e.message}`, 'error');
     state.online = false;
     setSyncStatus(e.message.includes("token") ? "请重登" : "离线模式", "is-error");
   }

@@ -438,3 +438,15 @@ p { color: var(--muted); line-height: 1.55; }
   50% { transform: translateX(5px); }
   75% { transform: translateX(-3px); }
 }
+
+/* Undo Toast Animation */
+@keyframes slideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
