@@ -22,240 +22,73 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div id="lockScreen" class="lock-screen" aria-label="访问密码">
-      <div class="lock-card">
-        <div class="lock-mark">流</div>
-        <h1>一流工作台</h1>
-        <p>私人首页 · 输入访问密码解锁</p>
-        <input
-          id="lockPassword"
-          type="password"
-          placeholder="访问密码"
-          autocomplete="current-password"
-          spellcheck="false"
-        />
-        <button id="lockSubmit" class="dark-button" type="button">解锁</button>
-        <p id="lockError" class="lock-error"></p>
-      </div>
-    </div>
-
+    <!-- 浏览器框架 -->
     <div class="browser-frame" aria-hidden="true">
       <div class="window-controls"><span></span><span></span><span></span></div>
-      <div class="address-bar">https://home.duyiliu.top · 私人工作台 · 本地优先</div>
+      <div class="address-bar">https://home.duyiliu.top · V2 架构 · 本地优先</div>
     </div>
 
-    <div class="page-shell">
-      <header id="top" class="topbar">
-        <a class="brand" href="#top" aria-label="返回首页">
-          <span class="brand-mark">—</span>
-          <span>
-            <strong>一流工作台</strong>
-            <small>浏览器首页 · 个人任务 / 快捷入口 / 信息雷达 / 随手记</small>
-          </span>
-        </a>
-        <div class="topbar-actions">
-          <span id="dateLabel" class="ghost-chip">--</span>
-          <span id="weekdayLabel" class="ghost-chip">--</span>
-          <span id="clockLabel" class="clock-pill">--:--</span>
-          <span class="ghost-chip">⌘ K 快捷命令</span>
-          <span id="syncStatus" class="status-pill is-idle">本地存储</span>
-        </div>
-      </header>
+    <!-- 顶栏导航 -->
+    <header class="topbar">
+      <a class="brand" href="/" data-link aria-label="返回首页">
+        <span class="brand-mark">—</span>
+        <span>
+          <strong>一流工作台</strong>
+          <small>V2 · 模块化 · 组件化 · 单页应用</small>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <span id="dateLabel" class="ghost-chip">--</span>
+        <span id="weekdayLabel" class="ghost-chip">--</span>
+        <span id="clockLabel" class="clock-pill">--:--</span>
+        <span class="ghost-chip">⌘ K 快捷命令</span>
+        <span id="syncStatus" class="status-pill is-idle">V2 本地存储</span>
+      </div>
+    </header>
 
-      <main class="app-layout">
-        <aside class="left-rail">
-          <section class="profile-card panel-card">
-            <div class="profile-icon">流</div>
-            <h2>duyiliu</h2>
-            <p>把常用工具、任务和信息流统一收进一个安静的个人首页。</p>
-            <div class="metric-grid" aria-label="个人概览">
-              <div><strong id="linkMetric">0</strong><span>快捷入口</span></div>
-              <div><strong id="taskMetric">0</strong><span>今日重点</span></div>
-              <div><strong id="habitMetric">0/0</strong><span>习惯连续</span></div>
-              <div><strong id="sourceMetric">0</strong><span>信息更新</span></div>
-            </div>
-          </section>
+    <!-- 应用容器 -->
+    <div id="app"></div>
 
-          <nav class="nav-card panel-card" aria-label="首页导航">
-            <a class="is-active" href="#top"><span>H</span>总览首页</a>
-            <a href="#quick-command"><span>K</span>快捷命令</a>
-            <a href="#launch"><span>AI</span>AI 工具</a>
-            <a href="#radar"><span>R</span>信息雷达</a>
-            <a href="#calendar"><span>C</span>日历动态</a>
-            <a href="nav.html"><span>📑</span>导航站</a>
-            <button id="exportData" type="button" style="width: 100%; margin-top: 12px; text-align: left; display: flex; align-items: center; gap: 8px; justify-content: flex-start;"><span>💾</span>导出备份</button>
-            <button id="importData" type="button" style="width: 100%; margin-top: 4px; text-align: left; display: flex; align-items: center; gap: 8px; justify-content: flex-start;"><span>📂</span>导入备份</button>
-          </nav>
+    <!-- 页脚 -->
+    <footer class="app-footer">
+      <span>V2 架构：模块化、组件化、单页应用。旧数据已自动迁移。</span>
+      <span>Claude warm minimal / V2.0.0</span>
+    </footer>
 
-          <section class="quote-card panel-card">
-            <p class="quote-text">“少一点装饰，多一点秩序。让首页像一个可以马上开始工作的安静书桌。”</p>
-            <span class="quote-author">— 一流工作台</span>
-            <div><span class="dot"></span><strong>本地优先</strong><em>数据存于浏览器</em></div>
-          </section>
-        </aside>
+    <!-- 应用入口（ES Module）-->
+    <script type="module" src="/src/app.js"></script>
 
-        <section class="center-column">
-          <section id="quick-command" class="hero-card panel-card">
-            <div class="eyebrow">Claude-inspired · warm minimal UI</div>
-            <h1>今天要处理什么？</h1>
-            <p>把搜索、启动、记录、计划合并到一个入口。整体从深色科技感改为暖白纸张感，降低视觉噪音。</p>
-            <form id="searchForm" class="command-search">
-              <span class="ai-dot">AI</span>
-              <input
-                id="searchInput"
-                name="query"
-                type="search"
-                autocomplete="off"
-                placeholder="搜索网站、打开工具、记录灵感、创建今日任务..."
-              />
-              <select id="searchEngine" name="engine" aria-label="搜索引擎">
-                <option value="google">Google</option>
-                <option value="baidu">百度</option>
-                <option value="github">GitHub</option>
-                <option value="mdn">MDN</option>
-                <option value="juejin">掘金</option>
-              </select>
-              <button type="submit">⌘ K</button>
-            </form>
-            <div class="prompt-row" aria-label="快捷操作">
-              <button type="button" onclick="window.open('https://github.com/', '_blank', 'noopener,noreferrer')">打开 GitHub</button>
-              <button type="button" onclick="document.querySelector('#noteBody').focus()">写一条随手记</button>
-              <button type="button" onclick="document.querySelector('#taskInput').focus()">查看今日重点</button>
-              <button type="button" onclick="document.querySelector('#searchInput').focus()">启动 AI 编码</button>
-            </div>
-          </section>
+    <!-- 时钟脚本 -->
+    <script>
+      function renderClock() {
+        const now = new Date();
+        const clock = new Intl.DateTimeFormat("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }).format(now);
+        const weekday = new Intl.DateTimeFormat("zh-CN", {
+          weekday: "long",
+        }).format(now);
+        const date = new Intl.DateTimeFormat("zh-CN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }).format(now);
 
-          <div class="mid-grid">
-            <article class="widget tasks-widget panel-card">
-              <div class="widget-head">
-                <div><h2>今日重点</h2><p>清单式留白，信息不挤压。</p></div>
-                <button id="clearDoneButton" class="ghost-button small" type="button">Clear done</button>
-              </div>
-              <form id="taskForm" class="inline-form task-form">
-                <input id="taskInput" type="text" placeholder="添加一件推进事项" required />
-                <select id="taskPriority" aria-label="优先级">
-                  <option value="high">High</option>
-                  <option value="normal" selected>Normal</option>
-                  <option value="low">Low</option>
-                </select>
-                <button type="submit">Add</button>
-              </form>
-              <div id="taskList" class="task-list empty-state">还没有待办。</div>
-            </article>
+        const clockLabel = document.getElementById("clockLabel");
+        const weekdayLabel = document.getElementById("weekdayLabel");
+        const dateLabel = document.getElementById("dateLabel");
 
-            <article class="ai-panel panel-card">
-              <div class="widget-head dark-head">
-                <div><h2>AI 命令面板</h2><p>保留工作台属性，弱化炫光。</p></div>
-                <span class="ready-pill">Ready</span>
-              </div>
-              <p class="ai-prompt">帮我把今天的待办、最近项目和常用工具整理成一个可执行清单，并按优先级排序。</p>
-              <div class="ai-actions">
-                <button id="aiSummarize" type="button">生成摘要</button>
-                <button id="aiSplitTask" type="button">拆分任务</button>
-                <button id="aiOpenProject" type="button">打开项目</button>
-                <button id="aiCapture" type="button">记录灵感</button>
-              </div>
-            </article>
-          </div>
+        if (clockLabel) clockLabel.textContent = clock;
+        if (weekdayLabel) weekdayLabel.textContent = weekday;
+        if (dateLabel) dateLabel.textContent = date;
+      }
 
-          <article id="launch" class="widget links-widget panel-card">
-            <div class="widget-head">
-              <div><h2>快捷入口</h2><p>统一图标块，保证每行四列对齐。</p></div>
-              <button id="toggleLinkForm" class="ghost-button small" type="button">New link</button>
-            </div>
-            <form id="linkForm" class="inline-form hidden">
-              <input id="linkTitle" type="text" placeholder="Title: GitHub" required />
-              <input id="linkUrl" type="text" placeholder="URL: github.com" required />
-              <input id="linkCategory" type="text" placeholder="Group" value="常用" />
-              <button type="submit">Save</button>
-            </form>
-            <div id="linkFilters" class="filter-row"></div>
-            <div id="linkGrid" class="link-grid empty-state">还没有快捷入口。</div>
-          </article>
+      renderClock();
+      setInterval(renderClock, 1000);
+    </script>
 
-          <article id="radar" class="widget sources-widget panel-card">
-            <div class="widget-head">
-              <div><h2>信息雷达</h2><p>AI 资讯、项目动态、服务器状态统一进入。</p></div>
-              <div class="widget-actions">
-                <button id="toggleSourceForm" class="ghost-button small" type="button">New source</button>
-              </div>
-            </div>
-            <form id="sourceForm" class="inline-form hidden">
-              <input id="sourceTitle" type="text" placeholder="Title: Hacker News" required />
-              <input id="sourceUrl" type="text" placeholder="URL or RSS feed" required />
-              <input id="sourceCategory" type="text" placeholder="Category" value="技术" />
-              <select id="sourceKind" aria-label="类型"><option value="link">Link</option><option value="rss">RSS</option></select>
-              <button type="submit">Save</button>
-            </form>
-            <div class="radar-columns">
-              <div><p class="eyebrow subhead">Sources</p><div id="sourceList" class="source-list empty-state">还没有信息源。</div></div>
-              <div><p class="eyebrow subhead">Latest</p><div id="feedList" class="feed-list empty-state">本地模式下仅管理信息源，RSS 抓取已停用。</div></div>
-            </div>
-          </article>
-        </section>
-
-        <aside class="right-rail">
-          <section id="weatherDisplay" class="weather-card panel-card" role="button" tabindex="0" title="点击自定义城市" aria-label="天气信息，按回车自定义城市">
-            <div><strong id="weatherTemp">--°C</strong><span id="weatherLoc">定位中...</span></div>
-            <span id="weatherIcon" class="weather-orb">☀️</span>
-          </section>
-
-          <article id="calendar" class="widget calendar-widget panel-card">
-            <div class="widget-head">
-              <div><h2>日历</h2><p id="calendarMonthLabel" class="calendar-month-label">--</p></div>
-              <div class="calendar-controls">
-                <button id="prevMonthBtn" class="ghost-button small" type="button">‹</button>
-                <span class="today-pill">Today</span>
-                <button id="nextMonthBtn" class="ghost-button small" type="button">›</button>
-              </div>
-            </div>
-            <div class="calendar-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
-            <div id="calendarGrid" class="calendar-grid"></div>
-            <div id="calendarDayDetails" class="calendar-day-details hidden">
-              <p class="eyebrow subhead" id="calendarDetailsDate">--月--日 任务动态</p>
-              <ul id="calendarDetailsList" class="calendar-details-list"></ul>
-            </div>
-          </article>
-
-          <article class="widget note-widget panel-card">
-            <div class="widget-head">
-              <div><h2>随手记</h2><p>轻量记录，不抢主视觉。</p></div>
-              <span id="noteSaved" class="mini-pill">未同步</span>
-            </div>
-            <textarea id="noteBody" placeholder="首页设计方向、交互建议、命令片段..." spellcheck="false"></textarea>
-          </article>
-
-          <article class="widget habits-widget panel-card">
-            <div class="widget-head">
-              <div><h2>习惯打卡</h2><p>少量指标，避免堆满。</p></div>
-              <button id="toggleHabitForm" class="ghost-button small" type="button">New habit</button>
-            </div>
-            <form id="habitForm" class="inline-form hidden">
-              <input id="habitTitle" type="text" placeholder="Title: 每天喝水" required />
-              <button type="submit">Add</button>
-            </form>
-            <div id="habitsList" class="habits-list empty-state">还没有习惯打卡。</div>
-          </article>
-        </aside>
-      </main>
-
-      <footer class="app-footer">
-        <span>布局校正版：固定 260 / 696 / 356 三栏栅格，所有卡片在同一网格内对齐，避免错位。</span>
-        <span>Claude warm minimal / personal OS</span>
-      </footer>
-    </div>
-
-    <template id="taskTemplate">
-      <label class="task-item">
-        <input type="checkbox" />
-        <span></span>
-        <em class="priority-tag"></em>
-        <button type="button" class="delete-badge" aria-label="删除待办">&times;</button>
-      </label>
-    </template>
-
-    <script src="auth.js?v=2"></script>
-    <script src="app.js?v=1.4" defer></script>
+    <!-- Service Worker 注册 -->
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(function (err) {

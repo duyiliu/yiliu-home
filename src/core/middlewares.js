@@ -7,13 +7,16 @@
  */
 export function persistMiddleware(prevState, nextState) {
   try {
+    // 剥离运行时状态（syncStatus 等），只持久化领域数据与用户设置
+    const { syncStatus, ...uiRest } = nextState.ui || {};
     const toSave = {
       bookmarks: nextState.bookmarks,
       tasks: nextState.tasks,
       habits: nextState.habits,
       sources: nextState.sources,
       notes: nextState.notes,
-      ui: nextState.ui,
+      ui: uiRest,
+      meta: nextState.meta,
     };
 
     localStorage.setItem('yiliu.home.state.v2', JSON.stringify(toSave));

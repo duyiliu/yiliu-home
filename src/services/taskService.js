@@ -91,9 +91,7 @@ const taskService = {
     const task = this.getById(id);
     if (!task) return;
 
-    // 保存到撤销栈
-    this._pushToUndoStack({ type: 'deleteTask', data: task });
-
+    // 不实现撤销功能时，不保留无法消费的历史状态。
     store.setState(state => ({
       ...state,
       tasks: state.tasks.filter(t => t.id !== id),
@@ -160,19 +158,6 @@ const taskService = {
       task.title.toLowerCase().includes(lowerQuery) ||
       task.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))
     );
-  },
-
-  /**
-   * 保存到撤销栈
-   */
-  _pushToUndoStack(action) {
-    store.setState(state => ({
-      ...state,
-      undoStack: [...(state.undoStack || []), {
-        ...action,
-        timestamp: Date.now(),
-      }].slice(-20), // 只保留最近 20 条
-    }));
   },
 };
 

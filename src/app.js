@@ -14,6 +14,7 @@ import router from './router.js';
 import Toast from './components/base/Toast.js';
 import SearchBar from './components/SearchBar.js';
 import searchService from './services/searchService.js';
+import { init as initBookmarks } from './services/bookmarkService.js';
 import store from './store.js';
 
 // 等待 DOM 加载
@@ -45,6 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('📦 Store:', window.__STORE__);
   console.log('🛣️ Router:', router);
   console.log('🔍 Global search: Press Ctrl+K');
+
+  // 步骤 6: 书签同步初始化（已登录则后台拉取）
+  initBookmarks();
 
   // 欢迎提示
   Toast.info('欢迎使用一流工作台 V2 - 按 Ctrl+K 搜索', 3000);

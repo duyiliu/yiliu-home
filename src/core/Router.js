@@ -1,7 +1,9 @@
 /**
  * 前端路由系统
  *
- * 基于 History API 实现单页应用路由
+ * 基于 hash（#/path）实现单页应用路由。
+ * 选择 hash 而非 History API：GitHub Pages 对未知路径直接返回 404，
+ * hash 模式深链刷新（如 /#/bookmarks）永远落到 index.html，无需服务端回退。
  */
 
 class Router {
@@ -17,11 +19,20 @@ class Router {
   }
 
   /**
+   * 当前 hash 对应的路径，例如 #/bookmarks -> /bookmarks
+   */
+  _currentPath() {
+    const hash = window.location.hash;
+    if (!hash || hash === '#') return '/';
+    return hash.startsWith('#/') ? hash.slice(1) : '/';
+  }
+
+  /**
    * 初始化路由
    */
   _init() {
-    // 监听浏览器前进/后退
-    window.addEventListener('popstate', () => {
+    // 监听浏览器前进/后退（hash 变化）
+    window.addEventListener('hashchange', () => {
       this.render();
     });
 
@@ -43,17 +54,18 @@ class Router {
    * 导航到新路由
    */
   push(path) {
-    if (path === window.location.pathname) return;
+    if (path === this._currentPath()) return;
 
-    window.history.pushState(null, '', path);
-    this.render();
+    window.location.hash = path;
   }
 
   /**
-   * 替换当前路由
+   * 替换当前路由（不产生历史记录）
    */
   replace(path) {
-    window.history.replaceState(null, '', path);
+    const target = `#${path}`;
+    if (window.location.hash === target) return;
+    window.history.replaceState(null, '', target);
     this.render();
   }
 
@@ -68,7 +80,7 @@ class Router {
    * 渲染当前路由
    */
   async render() {
-    const path = window.location.pathname;
+    const path = this._currentPath();
     const route = this._matchRoute(path);
 
     if (!route) {

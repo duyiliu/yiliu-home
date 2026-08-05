@@ -32,16 +32,11 @@ const initialState = {
       bookmarkCategory: '全部',
       taskStatus: 'all',
     },
+    syncStatus: 'idle', // 书签同步状态：idle | syncing | online | offline（运行时状态，不持久化）
   },
 
   // 运行时状态
   weather: null,
-
-  // 历史记录（撤销/重做）
-  history: {
-    undoStack: [],
-    redoStack: [],
-  },
 
   // 元数据
   meta: {

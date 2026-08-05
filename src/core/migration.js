@@ -3,8 +3,8 @@
  * 从 V1 (旧版) 迁移到 V2 (新架构)
  */
 
-import store from './store.js';
-import { generateId } from './utils/helpers.js';
+import store from '../store.js';
+import { generateId } from '../utils/helpers.js';
 
 /**
  * 迁移入口函数
@@ -31,6 +31,7 @@ export function migrateData() {
 
     // 转换数据
     const newData = transformData(oldData);
+    queueLinksForImport(oldData.links);
 
     // 保存到新 store
     store.setState(state => ({
@@ -171,15 +172,43 @@ function markAsMigrated() {
 }
 
 /**
- * 合并导航站书签数据
- * 如果用户之前使用了 nav.html，需要合并那边的数据
+ * 把 V1 links 暂存为待导入队列（登录后由 bookmarkService 幂等导入服务端）
+ * 已导入成功的队列会由 bookmarkService 清除，避免重复导入
  */
-export function mergeNavBookmarks() {
+export const LINKS_PENDING_KEY = 'yiliu.home.links.pending';
+
+export function queueLinksForImport(links) {
+  if (!Array.isArray(links) || links.length === 0) return;
   try {
-    // 这里可以读取 nav.html 使用的 localStorage key
-    // 暂时留空，后续实现
-    console.log('[Migration] Nav bookmarks merge - not implemented yet');
+    const pending = links
+      .filter((l) =\u003e l \u0026\u0026 l.url)
+      .map((l) =\u003e ({
+        name: l.title || l.name || '',
+        url: l.url,
+        grp: l.category || l.grp || '常用',
+      }));
+    if (pending.length \u003e 0) {
+      localStorage.setItem(LINKS_PENDING_KEY, JSON.stringify(pending));
+    }
   } catch (error) {
-    console.error('[Migration] Failed to merge nav bookmarks:', error);
+    console.error('[Migration] Failed to queue links for import:', error);
   }
+}
+
+/**
+ * 读取待导入队列（不移除）
+ */
+export function getPendingLinks() {
+  try {
+    return JSON.parse(localStorage.getItem(LINKS_PENDING_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 清除待导入队列（导入成功后调用）
+ */
+export function clearPendingLinks() {
+  localStorage.removeItem(LINKS_PENDING_KEY);
 }

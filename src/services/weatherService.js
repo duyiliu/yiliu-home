@@ -1,5 +1,8 @@
 import store from '../store.js';
 
+const CITY_KEY = 'yiliu.home.weather.city';
+const DEFAULT_CITY = '自动';
+
 /**
  * WeatherService - 天气服务
  *
@@ -8,12 +11,29 @@ import store from '../store.js';
  */
 const weatherService = {
   /**
+   * 获取用户配置的城市（localStorage 持久化）
+   */
+  getCity() {
+    return localStorage.getItem(CITY_KEY) || DEFAULT_CITY;
+  },
+
+  /**
+   * 保存城市并立即生效
+   */
+  setCity(city) {
+    const value = (city || '').trim() || DEFAULT_CITY;
+    localStorage.setItem(CITY_KEY, value);
+    return value;
+  },
+
+  /**
    * 获取天气数据
    */
-  async fetch(city = '自动') {
+  async fetch(city) {
     try {
+      const target = city || this.getCity();
       // 使用 wttr.in API（免费，无需 key）
-      const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1&lang=zh`;
+      const url = `https://wttr.in/${encodeURIComponent(target)}?format=j1&lang=zh`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -27,7 +47,7 @@ const weatherService = {
       const area = data.nearest_area?.[0];
 
       const weather = {
-        city: area?.areaName?.[0]?.value || city,
+        city: area?.areaName?.[0]?.value || target,
         temp: `${current.temp_C}°C`,
         description: current.lang_zh?.[0]?.value || current.weatherDesc[0].value,
         emoji: this.getWeatherEmoji(current.weatherCode),
@@ -74,7 +94,7 @@ const weatherService = {
   /**
    * 刷新天气（如果过期）
    */
-  async refreshIfNeeded(city = '自动') {
+  async refreshIfNeeded(city) {
     if (this.isExpired()) {
       return await this.fetch(city);
     }

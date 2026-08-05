@@ -10,7 +10,7 @@ services:
       - /data/services/yiliu-home/config:/app/config:ro
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "18090", "--ssl-keyfile", "/app/config/tls.key", "--ssl-certfile", "/app/config/tls.crt"]
     environment:
-      YILIU_PASSWORD: "Ws00350425"
+      YILIU_PASSWORD: "${YILIU_PASSWORD:?YILIU_PASSWORD is required}"
       YILIU_ORIGIN: "https://home.duyiliu.top"
       YILIU_DB: "/app/data/yiliu.db"
       YILIU_SEED: "/app/seed.json"

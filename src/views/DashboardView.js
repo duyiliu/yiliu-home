@@ -4,6 +4,7 @@
 
 import BaseView from './BaseView.js';
 import store from '../store.js';
+import router from '../router.js';
 import taskService from '../services/taskService.js';
 import habitService from '../services/habitService.js';
 import weatherService from '../services/weatherService.js';
@@ -21,6 +22,8 @@ class DashboardView extends BaseView {
     this.habitTracker = null;
     this.calendar = null;
     this.weather = null;
+    this.weatherLoading = false;
+    this.weatherError = null;
   }
 
   render() {
@@ -44,6 +47,7 @@ class DashboardView extends BaseView {
               <a class="is-active" href="/" data-link><span>H</span>总览首页</a>
               <a href="/bookmarks" data-link><span>📑</span>导航站</a>
               <a href="/stats" data-link><span>📊</span>统计</a>
+              <a href="/settings" data-link><span>⚙️</span>设置</a>
             </nav>
 
             <section class="quote-card panel-card">
@@ -198,8 +202,7 @@ class DashboardView extends BaseView {
     const viewBookmarksBtn = this.$('#view-bookmarks');
     if (viewBookmarksBtn) {
       viewBookmarksBtn.addEventListener('click', () => {
-        window.history.pushState(null, '', '/bookmarks');
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        router.push('/bookmarks');
       });
     }
 
@@ -285,7 +288,7 @@ class DashboardView extends BaseView {
       },
       onDelete: (id) => {
         taskService.delete(id);
-        Toast.info('任务已删除，按 Ctrl+Z 撤销');
+        Toast.info('任务已删除');
       },
     });
 
@@ -306,7 +309,10 @@ class DashboardView extends BaseView {
       const openTasks = state.tasks?.filter(t => t.status === 'todo').length || 0;
       taskMetric.textContent = openTasks;
     }
-    if (habitMetric) habitMetric.textContent = `0/${state.habits?.length || 0}`;
+    if (habitMetric) {
+      const { completedToday, total } = habitService.getStats();
+      habitMetric.textContent = `${completedToday}/${total}`;
+    }
     if (sourceMetric) sourceMetric.textContent = state.sources?.length || 0;
   }
 
@@ -457,26 +463,42 @@ class DashboardView extends BaseView {
 
     const state = store.getState();
     const weatherData = state.weather;
-    const loading = false; // TODO: 添加加载状态
-    const error = null;
+    const loading = this.weatherLoading;
+    const error = this.weatherError;
 
     this.weather = new Weather({
       weather: weatherData,
       loading,
       error,
-      onRefresh: async () => {
-        try {
-          Toast.info('正在获取天气...');
-          await weatherService.fetch('自动');
-          Toast.success('天气已更新');
-        } catch (error) {
-          Toast.error('获取天气失败：' + error.message);
-        }
-      },
+      onRefresh: () => this.refreshWeather(),
+      onSelectCity: () => this.changeWeatherCity(),
     });
 
     container.innerHTML = '';
     container.appendChild(this.weather.render());
+  }
+
+  async refreshWeather() {
+    this.weatherLoading = true;
+    this.weatherError = null;
+    this.renderWeather();
+
+    try {
+      await weatherService.fetch();
+      Toast.success('天气已更新');
+    } catch (error) {
+      this.weatherError = `获取天气失败：${error.message}`;
+    } finally {
+      this.weatherLoading = false;
+      this.renderWeather();
+    }
+  }
+
+  changeWeatherCity() {
+    const city = prompt('请输入城市英文或拼音，例如 Hangzhou、Beijing、Tokyo：', weatherService.getCity());
+    if (city === null) return;
+    weatherService.setCity(city.trim());
+    this.refreshWeather();
   }
 
   showAddHabitModal() {
@@ -522,10 +544,10 @@ class DashboardView extends BaseView {
       title: '添加习惯',
       content: form,
       footer,
-      onClose: () => modal.close(),
+      onClose: () => modal.destroy(),
     });
 
-    cancelBtn.onclick = () => modal.close();
+    cancelBtn.onclick = () => modal.destroy();
 
     form.onsubmit = (e) => {
       e.preventDefault();
@@ -538,13 +560,13 @@ class DashboardView extends BaseView {
           description: formData.get('description'),
         });
         Toast.success('习惯已添加');
-        modal.close();
+        modal.destroy();
       } catch (error) {
         Toast.error(error.message);
       }
     };
 
-    modal.open();
+    document.body.appendChild(modal.render());
   }
 
   getStorageSize() {

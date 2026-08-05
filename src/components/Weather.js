@@ -6,7 +6,7 @@ import Component from './base/Component.js';
  */
 class Weather extends Component {
   render() {
-    const { weather, loading, error, onRefresh } = this.props;
+    const { weather, loading, error, onRefresh, onSelectCity } = this.props;
 
     const container = this.createElement('div', { className: 'weather-widget' });
 
@@ -89,7 +89,11 @@ class Weather extends Component {
       this.createElement('button', {
         className: 'btn-text btn-sm',
         onclick: onRefresh,
-      }, '🔄 刷新')
+      }, '🔄 刷新'),
+      onSelectCity && this.createElement('button', {
+        className: 'btn-text btn-sm',
+        onclick: onSelectCity,
+      }, '设置城市')
     );
 
     container.appendChild(main);

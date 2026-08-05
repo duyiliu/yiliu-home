@@ -32,7 +32,7 @@ class SettingsView extends BaseView {
     container.appendChild(header);
     container.appendChild(sections);
 
-    return container;
+    this.container.appendChild(container);
   }
 
   createAppearanceSection() {

@@ -8,9 +8,8 @@ import habitService from '../services/habitService.js';
  * 显示各类数据的统计信息和图表
  */
 class StatsView extends BaseView {
-  constructor() {
-    super();
-    this.unsubscribe = null;
+  constructor(container, params) {
+    super(container, params);
   }
 
   render() {
@@ -63,7 +62,7 @@ class StatsView extends BaseView {
     container.appendChild(categoryChart);
     container.appendChild(priorityChart);
 
-    return container;
+    this.container.appendChild(container);
   }
 
   createStatsCard(title, items, icon) {
