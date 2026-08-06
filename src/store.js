@@ -76,7 +76,8 @@ store.use(validatorMiddleware);
 store.use(debouncedPersistMiddleware);
 
 // 开发环境：暴露到全局
-if (import.meta.env?.DEV || window.location.hostname === 'localhost') {
+// 注意先判断 typeof window，否则 Node/非浏览器环境 import 本模块会直接 ReferenceError
+if (import.meta.env?.DEV || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
   window.__STORE__ = store;
   window.__STATE__ = () => store.getState();
   console.log('[Store] Debug mode enabled. Access via window.__STORE__');

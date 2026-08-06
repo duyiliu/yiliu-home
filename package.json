@@ -1,0 +1,10 @@
+{
+  "name": "yiliu-home",
+  "version": "2.0.0",
+  "private": true,
+  "description": "一流工作台 V2 - 个人生产力工具",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

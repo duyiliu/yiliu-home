@@ -12,7 +12,7 @@
 class Store {
   constructor(initialState = {}) {
     this._state = initialState;
-    this._listeners = new Set();
+    this._listeners = [];
     this._middlewares = [];
   }
 
@@ -47,12 +47,16 @@ class Store {
 
   /**
    * 订阅状态变化
+   * 同一 listener 重复订阅会通知多次（与 EventBus 语义一致），取消时仅移除最近一次注册。
    * @param {Function} listener - 监听器 (state, prevState) => void
    * @returns {Function} 取消订阅函数
    */
   subscribe(listener) {
-    this._listeners.add(listener);
-    return () => this._listeners.delete(listener);
+    this._listeners.push(listener);
+    return () => {
+      const index = this._listeners.indexOf(listener);
+      if (index !== -1) this._listeners.splice(index, 1);
+    };
   }
 
   /**
@@ -67,7 +71,8 @@ class Store {
    * 通知所有监听器
    */
   _notify(state, prevState) {
-    this._listeners.forEach(listener => {
+    // 复制快照再遍历，避免通知过程中订阅/取消订阅改变数组导致跳过
+    this._listeners.slice().forEach(listener => {
       try {
         listener(state, prevState);
       } catch (error) {
