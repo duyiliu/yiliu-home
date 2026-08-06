@@ -6,15 +6,14 @@ from collections import defaultdict, deque
 
 import aiosqlite
 from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # ── 配置 ─────────────────────────────────────────
 DB_PATH = os.environ.get("YILIU_DB", "/app/data/yiliu.db")
 SEED_PATH = os.environ.get("YILIU_SEED", "/app/seed.json")
 PASSWORD = os.environ.get("YILIU_PASSWORD")
-ALLOWED_ORIGIN = os.environ.get("YILIU_ORIGIN", "https://home.duyiliu.top")
 TOKEN_TTL = 24 * 3600  # 24h
 
 # ── 简易限速（内存，每 IP 一个 deque） ────────────
@@ -111,13 +110,6 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN, "http://localhost:8000", "http://127.0.0.1:8000"],
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
 
 # ── 模型 ─────────────────────────────────────────
 class PasswordReq(BaseModel):
@@ -242,3 +234,36 @@ async def import_bookmarks(req: ImportReq, _: None = Depends(require_auth)):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+# ── 同源静态前端 ──────────────────────────────────
+# 注意：用绝对路径解析，避免 --app-dir 启动时 __file__ 为相对路径导致目录错位
+_SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_ROOT = os.environ.get("YILIU_WEB_ROOT", os.path.abspath(os.path.join(_SERVER_DIR, "..")))
+
+PUBLIC_FILES = {
+    "index.html",
+    "styles.css",
+    "manifest.json",
+    "sw.js",
+    "nav.html",
+    "index-v2.html",
+}
+
+if os.path.exists(WEB_ROOT):
+    src_dir = os.path.join(WEB_ROOT, "src")
+    if os.path.exists(src_dir):
+        app.mount("/src", StaticFiles(directory=src_dir), name="src")
+
+    icons_dir = os.path.join(WEB_ROOT, "icons")
+    if os.path.exists(icons_dir):
+        app.mount("/icons", StaticFiles(directory=icons_dir), name="icons")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(WEB_ROOT, "index.html"))
+
+    @app.get("/{file_name}")
+    async def serve_public_file(file_name: str):
+        if file_name not in PUBLIC_FILES:
+            raise HTTPException(404, "资源不存在")
+        return FileResponse(os.path.join(WEB_ROOT, file_name))

@@ -57,6 +57,7 @@ class BookmarksView extends BaseView {
                 <div class="widget-actions" style="display: flex; gap: 8px; align-items: center;">
                   <span id="bookmark-sync-status" class="status-pill is-idle">未同步（本地快照）</span>
                   <button id="sync-bookmarks-btn" class="ghost-button small" type="button">登录同步</button>
+                  <button id="logout-btn" class="ghost-button small">退出登录</button>
                   <button id="add-bookmark-btn" class="dark-button small">+ 添加书签</button>
                 </div>
               </div>
@@ -100,6 +101,16 @@ class BookmarksView extends BaseView {
   }
 
   bindEvents() {
+    // 退出登录
+    const logoutBtn = this.$('#logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        logout();
+        Toast.info('已退出登录');
+        this.renderSyncStatus();
+      });
+    }
+
     // 添加书签按钮
     const addBtn = this.$('#add-bookmark-btn');
     if (addBtn) {

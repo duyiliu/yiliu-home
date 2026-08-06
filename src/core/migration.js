@@ -212,3 +212,14 @@ export function getPendingLinks() {
 export function clearPendingLinks() {
   localStorage.removeItem(LINKS_PENDING_KEY);
 }
+
+/**
+ * 保留仍需重试的导入项；空数组表示全部导入成功。
+ */
+export function replacePendingLinks(links) {
+  if (!Array.isArray(links) || links.length === 0) {
+    clearPendingLinks();
+    return;
+  }
+  localStorage.setItem(LINKS_PENDING_KEY, JSON.stringify(links));
+}

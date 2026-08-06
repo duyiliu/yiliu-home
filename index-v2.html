@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>一流工作台</title>
-    <meta http-equiv="refresh" content="0;url=/" />
+    <script>
+      const route = location.hash.startsWith('#/') ? location.hash : '#/';
+      location.replace(`/${route}`);
+    </script>
   </head>
   <body>
-    <p>V2 已迁移至根路径，<a href="/">点击进入</a>。</p>
+    <p>V2 已迁移至根路径，<a href="/#/">点击进入</a>。</p>
   </body>
 </html>

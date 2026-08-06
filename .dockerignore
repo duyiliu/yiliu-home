@@ -1,0 +1,10 @@
+.git
+.gitignore
+.cursor
+.playwright-mcp
+agent-transcripts
+canvases
+mcps
+scripts
+*.md
+server/__pycache__

@@ -11,10 +11,10 @@
  */
 import store from '../store.js';
 import { normalizeUrl, getFaviconUrl, validateBookmark } from '../utils/helpers.js';
-import { getPendingLinks, clearPendingLinks } from '../core/migration.js';
+import { getPendingLinks, replacePendingLinks } from '../core/migration.js';
 
-// 本地调试可用 window.YILIU_API_BASE 覆盖（需在模块加载前设置）
-const API_BASE = window.YILIU_API_BASE || 'https://nav-api.duyiliu.top';
+// 本地调试/独立跨域测试可通过 window.YILIU_API_BASE 覆盖；生产环境默认使用同源相对路径
+const API_BASE = typeof window !== 'undefined' && window.YILIU_API_BASE ? window.YILIU_API_BASE : '';
 const TOKEN_KEY = 'yiliu.home.v2.token';
 
 export const SyncStatus = {
@@ -165,16 +165,27 @@ export async function init() {
  */
 export async function fetchAll() {
   setSync(SyncStatus.SYNCING);
-  await importPendingLinks();
-  const json = await apiCall('GET', '/api/bookmarks');
-  const bookmarks = (json.data || []).map(toLocal);
-  store.setState((state) => ({
-    ...state,
-    bookmarks,
-    meta: { ...state.meta, lastSync: json.updated_at || new Date().toISOString() },
-  }));
-  setSync(SyncStatus.ONLINE);
-  return bookmarks;
+  try {
+    await importPendingLinks();
+    const json = await apiCall('GET', '/api/bookmarks');
+    const bookmarks = (json.data || []).map(toLocal);
+    const current = store.getState().bookmarks || [];
+
+    if (bookmarks.length === 0 && current.length > 0) {
+      throw new Error('服务端书签为空，已保留本地快照，请确认数据库后重试');
+    }
+
+    store.setState((state) => ({
+      ...state,
+      bookmarks,
+      meta: { ...state.meta, lastSync: json.updated_at || new Date().toISOString() },
+    }));
+    setSync(SyncStatus.ONLINE);
+    return bookmarks;
+  } catch (error) {
+    setSync(SyncStatus.OFFLINE);
+    throw error;
+  }
 }
 
 /**
@@ -184,8 +195,10 @@ export async function fetchAll() {
 async function importPendingLinks() {
   const pending = getPendingLinks();
   if (pending.length === 0) return;
-  await apiCall('POST', '/api/bookmarks/import', { bookmarks: pending });
-  clearPendingLinks();
+  const res = await apiCall('POST', '/api/bookmarks/import', { bookmarks: pending });
+  const errors = res.data?.errors || [];
+  const failedIndexes = new Set(errors.map((error) => error.index));
+  replacePendingLinks(pending.filter((_, index) => failedIndexes.has(index)));
 }
 
 // ---------- 本地查询（纯函数，作用于服务端快照） ----------
@@ -297,7 +310,9 @@ const bookmarkService = {
    */
   async delete(id) {
     const bookmark = this.getById(id);
-    if (!bookmark) return;
+    if (!bookmark) {
+      throw new Error('书签不存在或已被删除');
+    }
 
     await apiCall('DELETE', `/api/bookmarks/${id}`);
     store.setState((state) => ({
