@@ -1,7 +1,7 @@
 import store from '../store.js';
 
-const CITY_KEY = 'yiliu.home.weather.city';
 const DEFAULT_CITY = '自动';
+let selectedCity = DEFAULT_CITY;
 
 /**
  * WeatherService - 天气服务
@@ -11,19 +11,18 @@ const DEFAULT_CITY = '自动';
  */
 const weatherService = {
   /**
-   * 获取用户配置的城市（localStorage 持久化）
+   * 获取当前会话选择的城市
    */
   getCity() {
-    return localStorage.getItem(CITY_KEY) || DEFAULT_CITY;
+    return selectedCity;
   },
 
   /**
-   * 保存城市并立即生效
+   * 保存到当前内存会话并立即生效
    */
   setCity(city) {
-    const value = (city || '').trim() || DEFAULT_CITY;
-    localStorage.setItem(CITY_KEY, value);
-    return value;
+    selectedCity = (city || '').trim() || DEFAULT_CITY;
+    return selectedCity;
   },
 
   /**

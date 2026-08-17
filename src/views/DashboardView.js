@@ -7,6 +7,7 @@ import store from '../store.js';
 import router from '../router.js';
 import taskService from '../services/taskService.js';
 import habitService from '../services/habitService.js';
+import noteService from '../services/noteService.js';
 import weatherService from '../services/weatherService.js';
 import TaskList from '../components/TaskList.js';
 import HabitTracker from '../components/HabitTracker.js';
@@ -39,7 +40,6 @@ class DashboardView extends BaseView {
                 <div><strong id="linkMetric">0</strong><span>快捷入口</span></div>
                 <div><strong id="taskMetric">0</strong><span>今日重点</span></div>
                 <div><strong id="habitMetric">0/0</strong><span>习惯连续</span></div>
-                <div><strong id="sourceMetric">0</strong><span>信息更新</span></div>
               </div>
             </section>
 
@@ -221,14 +221,14 @@ class DashboardView extends BaseView {
     }
   }
 
-  handleAddTask() {
+  async handleAddTask() {
     const input = this.$('#taskInput');
     const priority = this.$('#taskPriority');
 
     if (!input || !input.value.trim()) return;
 
     try {
-      taskService.add({
+      await taskService.add({
         title: input.value.trim(),
         priority: priority?.value || 'normal',
       });
@@ -240,26 +240,33 @@ class DashboardView extends BaseView {
     }
   }
 
-  handleClearDone() {
-    const count = taskService.clearCompleted();
-    if (count > 0) {
-      Toast.info(`已清理 ${count} 个已完成任务`);
-    } else {
-      Toast.info('没有已完成的任务');
+  async handleClearDone() {
+    try {
+      const count = await taskService.clearCompleted();
+      if (count > 0) {
+        Toast.info(`已清理 ${count} 个已完成任务`);
+      } else {
+        Toast.info('没有已完成的任务');
+      }
+    } catch (error) {
+      Toast.error(error.message);
     }
   }
 
-  handleNoteSave(content) {
-    store.setState(state => ({
-      ...state,
-      notes: {
+  async handleNoteSave(content) {
+    try {
+      const state = store.getState();
+      await noteService.save({
         ...state.notes,
         body: content,
         updatedAt: new Date().toISOString(),
-      }
-    }));
+      });
 
-    this.updateNoteSaved('已保存');
+      this.updateNoteSaved('已保存');
+    } catch (error) {
+      this.updateNoteSaved('保存失败');
+      Toast.error(`笔记保存失败：${error.message}`);
+    }
   }
 
   updateNoteSaved(text) {
@@ -282,13 +289,21 @@ class DashboardView extends BaseView {
     const state = store.getState();
     this.taskList = new TaskList({
       tasks: state.tasks || [],
-      onToggle: (id) => {
-        taskService.toggle(id);
-        Toast.success('状态已更新');
+      onToggle: async (id) => {
+        try {
+          await taskService.toggle(id);
+          Toast.success('状态已更新');
+        } catch (error) {
+          Toast.error(error.message);
+        }
       },
-      onDelete: (id) => {
-        taskService.delete(id);
-        Toast.info('任务已删除');
+      onDelete: async (id) => {
+        try {
+          await taskService.delete(id);
+          Toast.info('任务已删除');
+        } catch (error) {
+          Toast.error(error.message);
+        }
       },
     });
 
@@ -302,7 +317,6 @@ class DashboardView extends BaseView {
     const linkMetric = this.$('#linkMetric');
     const taskMetric = this.$('#taskMetric');
     const habitMetric = this.$('#habitMetric');
-    const sourceMetric = this.$('#sourceMetric');
 
     if (linkMetric) linkMetric.textContent = state.bookmarks?.length || 0;
     if (taskMetric) {
@@ -313,7 +327,6 @@ class DashboardView extends BaseView {
       const { completedToday, total } = habitService.getStats();
       habitMetric.textContent = `${completedToday}/${total}`;
     }
-    if (sourceMetric) sourceMetric.textContent = state.sources?.length || 0;
   }
 
   renderSystemStatus() {
@@ -322,7 +335,6 @@ class DashboardView extends BaseView {
 
     const state = store.getState();
     const stats = taskService.getStats();
-    const migrated = localStorage.getItem('yiliu.home.migrated');
 
     status.innerHTML = `
       <div style="display: grid; gap: 12px; font-size: 13px;">
@@ -331,8 +343,8 @@ class DashboardView extends BaseView {
           <span style="color: var(--color-success);">V2.0.0</span>
         </div>
         <div>
-          <strong>数据迁移：</strong>
-          <span>${migrated === 'v2' ? '✓ 已完成' : '未迁移'}</span>
+          <strong>数据库：</strong>
+          <span id="db-status">检测中…</span>
         </div>
         <div>
           <strong>任务完成率：</strong>
@@ -346,12 +358,27 @@ class DashboardView extends BaseView {
           <strong>书签数：</strong>
           <span>${state.bookmarks?.length || 0}</span>
         </div>
-        <div>
-          <strong>存储大小：</strong>
-          <span>${this.getStorageSize()}</span>
-        </div>
       </div>
     `;
+
+    this.checkDatabaseStatus();
+  }
+
+  async checkDatabaseStatus() {
+    const el = this.$('#db-status');
+    if (!el) return;
+
+    try {
+      const base = typeof window !== 'undefined' && window.YILIU_API_BASE ? window.YILIU_API_BASE : '';
+      const res = await fetch(`${base}/api/health`);
+      const json = res.ok ? await res.json() : null;
+      const online = !!json && json.status === 'ok';
+      el.textContent = online ? '在线' : '离线';
+      el.style.color = online ? 'var(--color-success)' : 'var(--color-danger)';
+    } catch {
+      el.textContent = '离线';
+      el.style.color = 'var(--color-danger)';
+    }
   }
 
   renderNote() {
@@ -382,9 +409,9 @@ class DashboardView extends BaseView {
     const state = store.getState();
     this.habitTracker = new HabitTracker({
       habits: state.habits || [],
-      onCheck: (id, checked) => {
+      onCheck: async (id, checked) => {
         try {
-          habitService.check(id, checked);
+          await habitService.check(id, checked);
           Toast.success(checked ? '打卡成功！' : '已取消打卡');
         } catch (error) {
           Toast.error(error.message);
@@ -393,10 +420,14 @@ class DashboardView extends BaseView {
       onAdd: () => {
         this.showAddHabitModal();
       },
-      onDelete: (id) => {
+      onDelete: async (id) => {
         if (confirm('确定删除这个习惯吗？')) {
-          habitService.delete(id);
-          Toast.info('习惯已删除');
+          try {
+            await habitService.delete(id);
+            Toast.info('习惯已删除');
+          } catch (error) {
+            Toast.error(error.message);
+          }
         }
       },
     });
@@ -549,12 +580,12 @@ class DashboardView extends BaseView {
 
     cancelBtn.onclick = () => modal.destroy();
 
-    form.onsubmit = (e) => {
+    form.onsubmit = async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
 
       try {
-        habitService.add({
+        await habitService.add({
           title: formData.get('title'),
           frequency: formData.get('frequency'),
           description: formData.get('description'),
@@ -567,20 +598,6 @@ class DashboardView extends BaseView {
     };
 
     document.body.appendChild(modal.render());
-  }
-
-  getStorageSize() {
-    try {
-      let total = 0;
-      for (let key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) {
-          total += localStorage[key].length + key.length;
-        }
-      }
-      return `${(total / 1024).toFixed(2)} KB`;
-    } catch {
-      return '未知';
-    }
   }
 
   destroy() {

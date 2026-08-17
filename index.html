@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="一个 Claude Code 风格的个人浏览器首页，用于搜索、快捷入口、待办、便签和信息源管理，数据保存在本地浏览器。"
+      content="一个 Claude Code 风格的个人浏览器首页，用于搜索、快捷入口、待办、便签和信息源管理，数据保存在数据库。"
     />
     <title>一流工作台 | 浏览器首页</title>
     <link
@@ -19,44 +19,66 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="一流工作台" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=13" />
   </head>
   <body>
-    <!-- 浏览器框架 -->
-    <div class="browser-frame" aria-hidden="true">
-      <div class="window-controls"><span></span><span></span><span></span></div>
-      <div class="address-bar">https://home.duyiliu.top · V2 架构 · 本地优先</div>
+    <!-- 锁屏（认证前仅显示此层） -->
+    <div id="lockScreen" class="lock-screen" role="dialog" aria-label="访问密码">
+      <div class="lock-card">
+        <div class="lock-mark">流</div>
+        <h1>一流工作台</h1>
+        <p>请输入访问密码以继续</p>
+        <input
+          id="lockPassword"
+          type="password"
+          placeholder="访问密码"
+          autocomplete="current-password"
+          aria-label="访问密码"
+        />
+        <button id="lockSubmit" class="dark-button" type="button">解锁</button>
+        <div id="lockError" class="lock-error" role="alert"></div>
+        <p class="lock-hint">数据存储于云端数据库</p>
+      </div>
     </div>
 
-    <!-- 顶栏导航 -->
-    <header class="topbar">
-      <a class="brand" href="/" data-link aria-label="返回首页">
-        <span class="brand-mark">—</span>
-        <span>
-          <strong>一流工作台</strong>
-          <small>V2 · 模块化 · 组件化 · 单页应用</small>
-        </span>
-      </a>
-      <div class="topbar-actions">
-        <span id="dateLabel" class="ghost-chip">--</span>
-        <span id="weekdayLabel" class="ghost-chip">--</span>
-        <span id="clockLabel" class="clock-pill">--:--</span>
-        <span class="ghost-chip">⌘ K 快捷命令</span>
-        <span id="syncStatus" class="status-pill is-idle">V2 本地存储</span>
+    <!-- 业务壳（认证通过后显示） -->
+    <div id="appShell">
+      <!-- 浏览器框架 -->
+      <div class="browser-frame" aria-hidden="true">
+        <div class="window-controls"><span></span><span></span><span></span></div>
+        <div class="address-bar">https://home.duyiliu.top · V2 架构 · 云端数据库</div>
       </div>
-    </header>
 
-    <!-- 应用容器 -->
-    <div id="app"></div>
+      <!-- 顶栏导航 -->
+      <header class="topbar">
+        <a class="brand" href="/" data-link aria-label="返回首页">
+          <span class="brand-mark">—</span>
+          <span>
+            <strong>一流工作台</strong>
+            <small>V2 · 模块化 · 组件化 · 单页应用</small>
+          </span>
+        </a>
+        <div class="topbar-actions">
+          <span id="dateLabel" class="ghost-chip">--</span>
+          <span id="weekdayLabel" class="ghost-chip">--</span>
+          <span id="clockLabel" class="clock-pill">--:--</span>
+          <span class="ghost-chip">⌘ K 快捷命令</span>
+          <span id="syncStatus" class="status-pill is-idle">V2 云端同步</span>
+        </div>
+      </header>
 
-    <!-- 页脚 -->
-    <footer class="app-footer">
-      <span>V2 架构：模块化、组件化、单页应用。旧数据已自动迁移。</span>
-      <span>Claude warm minimal / V2.0.0</span>
-    </footer>
+      <!-- 应用容器 -->
+      <div id="app"></div>
 
-    <!-- 应用入口（ES Module）-->
-    <script type="module" src="/src/app.js"></script>
+      <!-- 页脚 -->
+      <footer class="app-footer">
+        <span>V2 架构：模块化、组件化、单页应用。数据存于云端数据库。</span>
+        <span>Claude warm minimal / V2.0.0</span>
+      </footer>
+    </div>
+
+    <!-- 应用入口（ES Module，统一管理认证 UI 与启动流程） -->
+    <script type="module" src="/src/app.js?v=13"></script>
 
     <!-- 时钟脚本 -->
     <script>

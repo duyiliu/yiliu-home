@@ -1,17 +1,19 @@
 /**
- * 全局 Store 实例
+ * 全局 Store 实例（纯内存，不做任何本地持久化）
+ *
+ * 数据全部以服务端数据库为准：登录后由 apiClient.bootstrap() 全量拉取写入。
+ * 刷新页面后从 initialState 重新开始，等待重新认证。
  */
 
 import Store from './core/Store.js';
-import { debouncedPersistMiddleware, validatorMiddleware } from './core/middlewares.js';
+import { validatorMiddleware } from './core/middlewares.js';
 
 // 初始状态
 const initialState = {
   // 用户数据
-  bookmarks: [],  // 统一的书签（原 links + nav bookmarks）
+  bookmarks: [],  // 统一的书签
   tasks: [],
   habits: [],
-  sources: [],
   notes: {
     id: 'scratch-note',
     kind: 'scratch',
@@ -47,33 +49,11 @@ const initialState = {
   }
 };
 
-// 尝试从 localStorage 恢复状态
-function loadPersistedState() {
-  try {
-    const saved = localStorage.getItem('yiliu.home.state.v2');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        ...initialState,
-        ...parsed,
-        // 合并 UI 状态（保留默认值）
-        ui: { ...initialState.ui, ...parsed.ui },
-        meta: { ...initialState.meta, ...parsed.meta },
-      };
-    }
-  } catch (error) {
-    console.error('[Store] Failed to load persisted state:', error);
-  }
+// 创建 store 实例（纯内存，直接使用 initialState）
+const store = new Store(initialState);
 
-  return initialState;
-}
-
-// 创建 store 实例
-const store = new Store(loadPersistedState());
-
-// 注册中间件
+// 注册中间件（仅校验，无持久化）
 store.use(validatorMiddleware);
-store.use(debouncedPersistMiddleware);
 
 // 开发环境：暴露到全局
 // 注意先判断 typeof window，否则 Node/非浏览器环境 import 本模块会直接 ReferenceError

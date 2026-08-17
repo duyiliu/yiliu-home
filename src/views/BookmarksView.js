@@ -4,17 +4,10 @@
 
 import BaseView from './BaseView.js';
 import store from '../store.js';
-import bookmarkService, { login, fetchAll, isLoggedIn, SyncStatus } from '../services/bookmarkService.js';
+import bookmarkService from '../services/bookmarkService.js';
 import BookmarkGrid from '../components/BookmarkGrid.js';
 import Toast from '../components/base/Toast.js';
 import Modal from '../components/base/Modal.js';
-
-const SYNC_LABELS = {
-  [SyncStatus.IDLE]: '未同步（本地快照）',
-  [SyncStatus.SYNCING]: '同步中…',
-  [SyncStatus.ONLINE]: '已同步',
-  [SyncStatus.OFFLINE]: '离线模式 · 只读',
-};
 
 class BookmarksView extends BaseView {
   constructor(container, params) {
@@ -55,9 +48,6 @@ class BookmarksView extends BaseView {
                   <p id="current-category-label">全部书签</p>
                 </div>
                 <div class="widget-actions" style="display: flex; gap: 8px; align-items: center;">
-                  <span id="bookmark-sync-status" class="status-pill is-idle">未同步（本地快照）</span>
-                  <button id="sync-bookmarks-btn" class="ghost-button small" type="button">登录同步</button>
-                  <button id="logout-btn" class="ghost-button small">退出登录</button>
                   <button id="add-bookmark-btn" class="dark-button small">+ 添加书签</button>
                 </div>
               </div>
@@ -79,7 +69,6 @@ class BookmarksView extends BaseView {
     `;
 
     // 渲染各部分
-    this.renderSyncStatus();
     this.renderBookmarkGrid();
     this.renderStats();
     this.renderCategories();
@@ -94,39 +83,14 @@ class BookmarksView extends BaseView {
         this.renderStats();
         this.renderCategories();
       }
-      if (state.ui.syncStatus !== prevState.ui.syncStatus) {
-        this.renderSyncStatus();
-      }
     });
   }
 
   bindEvents() {
-    // 退出登录
-    const logoutBtn = this.$('#logout-btn');
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
-        logout();
-        Toast.info('已退出登录');
-        this.renderSyncStatus();
-      });
-    }
-
     // 添加书签按钮
     const addBtn = this.$('#add-bookmark-btn');
     if (addBtn) {
       addBtn.addEventListener('click', () => this.showAddBookmarkModal());
-    }
-
-    // 登录/同步按钮
-    const syncBtn = this.$('#sync-bookmarks-btn');
-    if (syncBtn) {
-      syncBtn.addEventListener('click', () => {
-        if (isLoggedIn()) {
-          this.refreshBookmarks();
-        } else {
-          this.showLoginModal();
-        }
-      });
     }
 
     // 搜索
@@ -165,21 +129,6 @@ class BookmarksView extends BaseView {
     container.appendChild(this.bookmarkGrid.render());
   }
 
-  renderSyncStatus() {
-    const el = this.$('#bookmark-sync-status');
-    const btn = this.$('#sync-bookmarks-btn');
-    if (!el) return;
-
-    const status = store.getState().ui.syncStatus || SyncStatus.IDLE;
-    const cls = status === SyncStatus.ONLINE ? 'is-online'
-      : status === SyncStatus.SYNCING ? 'is-syncing'
-      : status === SyncStatus.OFFLINE ? 'is-offline'
-      : 'is-idle';
-    el.textContent = SYNC_LABELS[status] || '未同步';
-    el.className = `status-pill ${cls}`;
-    if (btn) btn.textContent = isLoggedIn() ? '重新同步' : '登录同步';
-  }
-
   async handleDelete(id) {
     try {
       await bookmarkService.delete(id);
@@ -196,78 +145,6 @@ class BookmarksView extends BaseView {
     } catch (error) {
       Toast.error(`操作失败：${error.message}`);
     }
-  }
-
-  async refreshBookmarks() {
-    try {
-      await fetchAll();
-      Toast.success('已同步');
-    } catch (error) {
-      Toast.error(`同步失败：${error.message}`);
-    }
-  }
-
-  showLoginModal() {
-    const modalContent = document.createElement('div');
-    modalContent.innerHTML = `
-      <form id="login-form" style="display: grid; gap: 16px;">
-        <label style="display: grid; gap: 6px;">
-          <span style="font-weight: 700;">访问密码</span>
-          <input type="password" id="login-password" placeholder="请输入访问密码" required style="width: 100%;" />
-        </label>
-        <p style="margin: 0; font-size: 12px; color: var(--color-text-secondary);">
-          登录后将书签同步到云端（SQLite），本地保留最近快照。
-        </p>
-      </form>
-    `;
-
-    const submitBtn = document.createElement('button');
-    submitBtn.className = 'dark-button';
-    submitBtn.textContent = '登录并同步';
-    submitBtn.style.cssText = 'width: 100%;';
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'ghost-button';
-    cancelBtn.textContent = '取消';
-    cancelBtn.style.cssText = 'width: 100%;';
-
-    const modal = new Modal({
-      title: '登录同步',
-      content: modalContent,
-      footer: [submitBtn, cancelBtn],
-      onClose: () => modal.destroy(),
-    });
-
-    document.body.appendChild(modal.render());
-
-    submitBtn.addEventListener('click', async () => {
-      const password = document.getElementById('login-password').value;
-      if (!password) {
-        Toast.error('请输入密码');
-        return;
-      }
-      submitBtn.disabled = true;
-      submitBtn.textContent = '登录中…';
-      try {
-        await login(password);
-        await fetchAll();
-        Toast.success('已登录并同步');
-        modal.destroy();
-      } catch (error) {
-        Toast.error(error.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = '登录并同步';
-      }
-    });
-
-    cancelBtn.addEventListener('click', () => modal.destroy());
-
-    modalContent.querySelector('form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      submitBtn.click();
-    });
-
-    setTimeout(() => document.getElementById('login-password')?.focus(), 100);
   }
 
   renderStats() {

@@ -3,31 +3,6 @@
  */
 
 /**
- * 持久化中间件 - 自动保存到 localStorage
- */
-export function persistMiddleware(prevState, nextState) {
-  try {
-    // 剥离运行时状态（syncStatus 等），只持久化领域数据与用户设置
-    const { syncStatus, ...uiRest } = nextState.ui || {};
-    const toSave = {
-      bookmarks: nextState.bookmarks,
-      tasks: nextState.tasks,
-      habits: nextState.habits,
-      sources: nextState.sources,
-      notes: nextState.notes,
-      ui: uiRest,
-      meta: nextState.meta,
-    };
-
-    localStorage.setItem('yiliu.home.state.v2', JSON.stringify(toSave));
-  } catch (error) {
-    console.error('[Persist] Failed to save state:', error);
-  }
-
-  return nextState;
-}
-
-/**
  * 日志中间件 - 开发环境打印状态变化
  */
 export function loggerMiddleware(prevState, nextState) {
@@ -54,20 +29,6 @@ export function validatorMiddleware(prevState, nextState) {
     console.error('[Validator] Invalid bookmarks array, reverting');
     return prevState;
   }
-
-  return nextState;
-}
-
-/**
- * 防抖保存中间件 - 延迟保存减少 IO
- */
-let saveTimer = null;
-export function debouncedPersistMiddleware(prevState, nextState) {
-  clearTimeout(saveTimer);
-
-  saveTimer = setTimeout(() => {
-    persistMiddleware(prevState, nextState);
-  }, 150);
 
   return nextState;
 }

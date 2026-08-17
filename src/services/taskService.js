@@ -1,9 +1,9 @@
 /**
- * 任务管理服务
+ * 任务管理服务 — 查询统计（同步，读 store）+ CRUD（异步，API 成功后才更新 store）
  */
-
 import store from '../store.js';
 import { generateId, validateTask } from '../utils/helpers.js';
+import { apiCall, toServerTask } from './apiClient.js';
 
 const taskService = {
   /**
@@ -17,14 +17,13 @@ const taskService = {
    * 获取单个任务
    */
   getById(id) {
-    return store.getState().tasks.find(t => t.id === id);
+    return store.getState().tasks.find((t) => t.id === id);
   },
 
   /**
-   * 添加任务
+   * 添加任务（API 成功后才提交 store）
    */
-  add(taskData) {
-    // 验证数据
+  async add(taskData) {
     const errors = validateTask(taskData);
     if (errors.length > 0) {
       throw new Error(`验证失败: ${errors.join(', ')}`);
@@ -42,39 +41,42 @@ const taskService = {
       completedAt: null,
     };
 
-    store.setState(state => ({
+    const json = await apiCall('POST', '/api/tasks', toServerTask(newTask));
+    const created = { ...newTask, id: json.data.id };
+    store.setState((state) => ({
       ...state,
-      tasks: [...state.tasks, newTask],
+      tasks: [...state.tasks, created],
     }));
-
-    return newTask;
+    return created;
   },
 
   /**
-   * 更新任务
+   * 更新任务（API 成功后才提交 store）
    */
-  update(id, updates) {
+  async update(id, updates) {
     const task = this.getById(id);
     if (!task) {
       throw new Error(`任务不存在: ${id}`);
     }
 
-    store.setState(state => ({
-      ...state,
-      tasks: state.tasks.map(t =>
-        t.id === id
-          ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-          : t
-      ),
-    }));
+    const next = {
+      ...task,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
 
+    await apiCall('PUT', `/api/tasks/${id}`, toServerTask(next));
+    store.setState((state) => ({
+      ...state,
+      tasks: state.tasks.map((t) => (t.id === id ? next : t)),
+    }));
     return this.getById(id);
   },
 
   /**
    * 切换任务状态
    */
-  toggle(id) {
+  async toggle(id) {
     const task = this.getById(id);
     if (!task) return null;
 
@@ -87,26 +89,27 @@ const taskService = {
   /**
    * 删除任务
    */
-  delete(id) {
+  async delete(id) {
     const task = this.getById(id);
     if (!task) return;
 
-    // 不实现撤销功能时，不保留无法消费的历史状态。
-    store.setState(state => ({
+    await apiCall('DELETE', `/api/tasks/${id}`);
+    store.setState((state) => ({
       ...state,
-      tasks: state.tasks.filter(t => t.id !== id),
+      tasks: state.tasks.filter((t) => t.id !== id),
     }));
   },
 
   /**
    * 批量删除已完成任务
    */
-  clearCompleted() {
-    const completed = this.getAll().filter(t => t.status === 'done');
+  async clearCompleted() {
+    const completed = this.getAll().filter((t) => t.status === 'done');
 
-    store.setState(state => ({
+    await Promise.all(completed.map((t) => apiCall('DELETE', `/api/tasks/${t.id}`)));
+    store.setState((state) => ({
       ...state,
-      tasks: state.tasks.filter(t => t.status !== 'done'),
+      tasks: state.tasks.filter((t) => t.status !== 'done'),
     }));
 
     return completed.length;
@@ -118,12 +121,12 @@ const taskService = {
   getStats() {
     const tasks = this.getAll();
     const total = tasks.length;
-    const completed = tasks.filter(t => t.status === 'done').length;
+    const completed = tasks.filter((t) => t.status === 'done').length;
     const todo = total - completed;
 
     // 今日完成数
     const today = new Date().toDateString();
-    const todayCompleted = tasks.filter(t =>
+    const todayCompleted = tasks.filter((t) =>
       t.status === 'done' &&
       t.completedAt &&
       new Date(t.completedAt).toDateString() === today
@@ -131,7 +134,7 @@ const taskService = {
 
     // 过期任务数
     const now = new Date();
-    const overdue = tasks.filter(t =>
+    const overdue = tasks.filter((t) =>
       t.status === 'todo' &&
       t.dueDate &&
       new Date(t.dueDate) < now
@@ -154,9 +157,9 @@ const taskService = {
     if (!query) return this.getAll();
 
     const lowerQuery = query.toLowerCase();
-    return this.getAll().filter(task =>
+    return this.getAll().filter((task) =>
       task.title.toLowerCase().includes(lowerQuery) ||
-      task.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))
+      task.tags?.some((tag) => tag.toLowerCase().includes(lowerQuery))
     );
   },
 };

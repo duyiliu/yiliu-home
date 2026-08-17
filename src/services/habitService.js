@@ -1,9 +1,13 @@
-import store from '../store.js';
-import { generateId } from '../utils/helpers.js';
-
 /**
  * HabitService - 习惯管理服务
+ *
+ * 查询统计同步读 store；CRUD/打卡异步，API 成功后才更新 store。
+ * 打卡后 history/streak 以服务端响应为准（streak 由服务端计算）。
  */
+import store from '../store.js';
+import { generateId } from '../utils/helpers.js';
+import { apiCall, toServerHabit } from './apiClient.js';
+
 const habitService = {
   /**
    * 获取所有习惯
@@ -18,13 +22,13 @@ const habitService = {
    */
   getById(id) {
     const habits = this.getAll();
-    return habits.find(h => h.id === id);
+    return habits.find((h) => h.id === id);
   },
 
   /**
-   * 添加习惯
+   * 添加习惯（API 成功后才提交 store）
    */
-  add(habitData) {
+  async add(habitData) {
     const { title, frequency = 'daily', description } = habitData;
 
     if (!title || !title.trim()) {
@@ -41,104 +45,91 @@ const habitService = {
       createdAt: new Date().toISOString(),
     };
 
-    store.setState(state => ({
+    const json = await apiCall('POST', '/api/habits', toServerHabit(newHabit));
+    const created = { ...newHabit, id: json.data.id };
+    store.setState((state) => ({
       ...state,
-      habits: [...(state.habits || []), newHabit],
+      habits: [...(state.habits || []), created],
     }));
-
-    return newHabit;
+    return created;
   },
 
   /**
-   * 更新习惯
+   * 更新习惯（API 成功后才提交 store）
    */
-  update(id, updates) {
+  async update(id, updates) {
     const habits = this.getAll();
-    const index = habits.findIndex(h => h.id === id);
+    const index = habits.findIndex((h) => h.id === id);
 
     if (index === -1) {
       throw new Error('习惯不存在');
     }
 
-    const updatedHabits = [...habits];
-    updatedHabits[index] = {
-      ...updatedHabits[index],
+    const next = {
+      ...habits[index],
       ...updates,
       updatedAt: new Date().toISOString(),
     };
 
-    store.setState(state => ({
+    await apiCall('PUT', `/api/habits/${id}`, toServerHabit(next));
+    store.setState((state) => ({
       ...state,
-      habits: updatedHabits,
+      habits: state.habits.map((h) => (h.id === id ? next : h)),
     }));
-
-    return updatedHabits[index];
+    return next;
   },
 
   /**
-   * 删除习惯
+   * 删除习惯（API 成功后才提交 store）
    */
-  delete(id) {
-    const habits = this.getAll();
-    const filtered = habits.filter(h => h.id !== id);
-
-    store.setState(state => ({
+  async delete(id) {
+    await apiCall('DELETE', `/api/habits/${id}`);
+    store.setState((state) => ({
       ...state,
-      habits: filtered,
+      habits: state.habits.filter((h) => h.id !== id),
     }));
   },
 
   /**
-   * 打卡/取消打卡
+   * 打卡/取消打卡：提交服务端，history/streak 以服务端响应为准
    */
-  check(id, checked) {
+  async check(id, checked) {
     const habit = this.getById(id);
     if (!habit) {
       throw new Error('习惯不存在');
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString();
+    const json = await apiCall('POST', `/api/habits/${id}/check`, { checked: !!checked });
+    const server = json.data || {};
+    const history = Array.isArray(server.history)
+      ? server.history
+      : toggleToday(habit.history, checked);
+    const streak = typeof server.streak === 'number'
+      ? server.streak
+      : this.calculateStreak(history);
 
-    let newHistory = [...habit.history];
-
-    if (checked) {
-      // 添加打卡记录（避免重复）
-      if (!newHistory.some(date => {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() === today.getTime();
-      })) {
-        newHistory.push(todayStr);
-      }
-    } else {
-      // 移除今天的打卡记录
-      newHistory = newHistory.filter(date => {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime() !== today.getTime();
-      });
-    }
-
-    // 计算连续天数
-    const streak = this.calculateStreak(newHistory);
-
-    this.update(id, {
-      history: newHistory,
+    const next = {
+      ...habit,
+      history,
       streak,
-    });
+      updatedAt: new Date().toISOString(),
+    };
+    store.setState((state) => ({
+      ...state,
+      habits: state.habits.map((h) => (h.id === id ? next : h)),
+    }));
+    return next;
   },
 
   /**
-   * 计算连续天数
+   * 计算连续天数（服务端未返回 streak 时的本地兜底）
    */
   calculateStreak(history) {
     if (history.length === 0) return 0;
 
     // 按日期排序
     const sorted = history
-      .map(date => new Date(date))
+      .map((date) => new Date(date))
       .sort((a, b) => b - a);
 
     // 检查是否包含今天
@@ -185,8 +176,8 @@ const habitService = {
 
     // 今天完成的习惯数
     const today = new Date().toDateString();
-    const completedToday = habits.filter(h =>
-      h.history.some(date => new Date(date).toDateString() === today)
+    const completedToday = habits.filter((h) =>
+      h.history.some((date) => new Date(date).toDateString() === today)
     ).length;
 
     return {
@@ -197,5 +188,27 @@ const habitService = {
     };
   },
 };
+
+/** 本地兜底：按日期增删今天的打卡记录 */
+function toggleToday(history, checked) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTime = today.getTime();
+  const todayStr = today.toISOString();
+
+  if (checked) {
+    const exists = history.some((date) => {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime() === todayTime;
+    });
+    return exists ? history : [...history, todayStr];
+  }
+  return history.filter((date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() !== todayTime;
+  });
+}
 
 export default habitService;

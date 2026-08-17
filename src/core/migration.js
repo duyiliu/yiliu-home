@@ -181,13 +181,13 @@ export function queueLinksForImport(links) {
   if (!Array.isArray(links) || links.length === 0) return;
   try {
     const pending = links
-      .filter((l) =\u003e l \u0026\u0026 l.url)
-      .map((l) =\u003e ({
+      .filter((l) => l && l.url)
+      .map((l) => ({
         name: l.title || l.name || '',
         url: l.url,
         grp: l.category || l.grp || '常用',
       }));
-    if (pending.length \u003e 0) {
+    if (pending.length > 0) {
       localStorage.setItem(LINKS_PENDING_KEY, JSON.stringify(pending));
     }
   } catch (error) {

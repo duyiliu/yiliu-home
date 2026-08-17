@@ -1,6 +1,7 @@
 import BaseView from './BaseView.js';
 import store from '../store.js';
 import Toast from '../components/base/Toast.js';
+import { logout as apiLogout, AUTH_EXPIRED_EVENT } from '../services/apiClient.js';
 
 /**
  * SettingsView - 设置视图
@@ -22,6 +23,9 @@ class SettingsView extends BaseView {
 
     // 外观设置
     sections.appendChild(this.createAppearanceSection());
+
+    // 账号
+    sections.appendChild(this.createAccountSection());
 
     // 数据管理
     sections.appendChild(this.createDataSection());
@@ -54,6 +58,40 @@ class SettingsView extends BaseView {
     return section;
   }
 
+  createAccountSection() {
+    const section = document.createElement('div');
+    section.className = 'settings-section';
+
+    const header = document.createElement('h2');
+    header.textContent = '账号';
+    section.appendChild(header);
+
+    // 全站退出
+    const logoutRow = this.createSettingRow(
+      '退出登录',
+      '清除登录凭证并退出当前账号',
+      this.createButton('退出', () => this.handleLogout(), 'danger')
+    );
+    section.appendChild(logoutRow);
+
+    return section;
+  }
+
+  handleLogout() {
+    if (!confirm('确定要退出登录吗？')) {
+      return;
+    }
+
+    try {
+      apiLogout();
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+      Toast.success('已退出登录');
+      setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+      Toast.error('退出失败：' + error.message);
+    }
+  }
+
   createDataSection() {
     const section = document.createElement('div');
     section.className = 'settings-section';
@@ -65,26 +103,10 @@ class SettingsView extends BaseView {
     // 导出数据
     const exportRow = this.createSettingRow(
       '导出数据',
-      '下载所有数据为 JSON 文件',
+      '下载当前数据库内容为 JSON 文件',
       this.createButton('导出', () => this.exportData())
     );
     section.appendChild(exportRow);
-
-    // 导入数据
-    const importRow = this.createSettingRow(
-      '导入数据',
-      '从 JSON 文件恢复数据',
-      this.createImportButton()
-    );
-    section.appendChild(importRow);
-
-    // 清空数据
-    const clearRow = this.createSettingRow(
-      '清空数据',
-      '删除所有数据（不可恢复）',
-      this.createButton('清空', () => this.clearData(), 'danger')
-    );
-    section.appendChild(clearRow);
 
     return section;
   }
@@ -182,39 +204,6 @@ class SettingsView extends BaseView {
     return select;
   }
 
-  createImportButton() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.style.display = 'none';
-
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        if (confirm('导入数据将覆盖现有数据，确定继续吗？')) {
-          store.setState(data);
-          Toast.success('数据导入成功');
-          setTimeout(() => window.location.reload(), 1000);
-        }
-      } catch (error) {
-        Toast.error('导入失败：' + error.message);
-      }
-    };
-
-    const button = this.createButton('选择文件', () => input.click());
-
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(input);
-    wrapper.appendChild(button);
-
-    return wrapper;
-  }
-
   exportData() {
     try {
       const state = store.getState();
@@ -231,24 +220,6 @@ class SettingsView extends BaseView {
       Toast.success('数据导出成功');
     } catch (error) {
       Toast.error('导出失败：' + error.message);
-    }
-  }
-
-  clearData() {
-    if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) {
-      return;
-    }
-
-    if (!confirm('真的确定吗？这将删除所有任务、书签、习惯等数据！')) {
-      return;
-    }
-
-    try {
-      localStorage.clear();
-      Toast.success('数据已清空');
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (error) {
-      Toast.error('清空失败：' + error.message);
     }
   }
 

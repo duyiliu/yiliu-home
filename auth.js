@@ -1,56 +1,89 @@
-/* 前端口令锁：单密码访问控制（防君子不防恶意；个人主页够用）
- * 改密码：把 PASSWORD_HASH 换成新密码的 SHA-256 hex（node -e "console.log(require('crypto').createHash('sha256').update('新密码').digest('hex'))"）
+/**
+ * 认证 UI 控制模块（ES Module，由 src/app.js 统一加载，避免重复初始化）
+ *
+ * 职责：
+ * - 绑定锁屏表单（密码输入、解锁按钮、错误提示）
+ * - 提交时调用 login(password) + bootstrap()：密码校验在服务端完成，
+ *   token 由 apiClient 存入 sessionStorage（不写 localStorage、不保存明文密码）
+ * - 成功后隐藏锁屏、显示业务壳 #appShell，并派发 yiliu:authenticated
+ * - 失败时在锁屏内展示错误并触发抖动动画
  */
-const AUTH_KEY = "yiliu.home.auth";
-const PASSWORD_HASH = "1e395ce2ed739e5d69e000b8f0a7959505aba94472f72c0972a98a0b1260a444"; // sha256("Ws00350425")
+import { login, bootstrap } from './src/services/apiClient.js';
 
-async function sha256Hex(str) {
-  const data = new TextEncoder().encode(str);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+export const AUTHENTICATED_EVENT = 'yiliu:authenticated';
+
+let lockEl = null;
+let inputEl = null;
+let submitEl = null;
+let errorEl = null;
+let submitting = false;
+
+function showError(message) {
+  if (errorEl) errorEl.textContent = message || '';
 }
 
-function unlock() {
-  const lock = document.getElementById("lockScreen");
-  if (lock) lock.classList.add("is-unlocked");
+function shake() {
+  if (!inputEl) return;
+  inputEl.classList.remove('shake');
+  void inputEl.offsetWidth; // 重启动画
+  inputEl.classList.add('shake');
 }
 
-async function handleUnlock() {
-  const input = document.getElementById("lockPassword");
-  const error = document.getElementById("lockError");
-  const value = input.value.trim();
+async function handleSubmit() {
+  if (!inputEl || submitting) return;
+  const value = inputEl.value.trim();
   if (!value) return;
-  const hash = await sha256Hex(value);
-  if (hash === PASSWORD_HASH) {
-    localStorage.setItem(AUTH_KEY, "1");
-    // 仅当前浏览会话供导航 API 登录用；不把明文密码持久化到 localStorage。
-    sessionStorage.setItem("yiliu.home.nav.password", value);
-    input.value = "";
-    error.textContent = "";
+
+  submitting = true;
+  if (submitEl) submitEl.disabled = true;
+  showError('');
+
+  try {
+    await login(value); // 服务端校验密码并换取 token
+    await bootstrap();  // 登录后立即全量拉取数据写入 store
+    inputEl.value = '';
     unlock();
-  } else {
-    error.textContent = "密码不对，再试一次。";
-    input.select();
-    input.classList.remove("shake");
-    void input.offsetWidth; // restart shake animation
-    input.classList.add("shake");
+    window.dispatchEvent(new CustomEvent(AUTHENTICATED_EVENT));
+  } catch (err) {
+    showError(err.message || '解锁失败，请重试');
+    inputEl.select();
+    shake();
+  } finally {
+    submitting = false;
+    if (submitEl) submitEl.disabled = false;
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const lock = document.getElementById("lockScreen");
-  if (!lock) return;
-  if (localStorage.getItem(AUTH_KEY) === "1") {
-    lock.classList.add("is-unlocked");
-    return;
-  }
-  const input = document.getElementById("lockPassword");
-  const button = document.getElementById("lockSubmit");
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleUnlock();
+/** 隐藏锁屏并显示业务壳 */
+function unlock() {
+  if (lockEl) lockEl.classList.add('is-unlocked');
+  const shell = document.getElementById('appShell');
+  if (shell) shell.classList.add('is-visible');
+}
+
+export function showAuthenticatedApp() {
+  unlock();
+}
+
+/** 回到锁屏（隐藏业务壳） */
+export function showLockScreen() {
+  if (lockEl) lockEl.classList.remove('is-unlocked');
+  const shell = document.getElementById('appShell');
+  if (shell) shell.classList.remove('is-visible');
+  if (inputEl) inputEl.focus();
+}
+
+/** 绑定锁屏表单（幂等，可在 DOMContentLoaded 后调用） */
+export function initAuthUI() {
+  if (lockEl) return;
+  lockEl = document.getElementById('lockScreen');
+  inputEl = document.getElementById('lockPassword');
+  submitEl = document.getElementById('lockSubmit');
+  errorEl = document.getElementById('lockError');
+  if (!lockEl || !inputEl || !submitEl) return;
+
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleSubmit();
   });
-  button.addEventListener("click", handleUnlock);
-  setTimeout(() => input.focus(), 50);
-});
+  submitEl.addEventListener('click', handleSubmit);
+}

@@ -1,12 +1,13 @@
 /* yiliu-home Service Worker
- * 页面导航 = network-first（在线拿最新）；静态资源 = stale-while-revalidate。
+ * 页面导航与应用模块 = network-first（在线拿最新）；其它静态资源 = stale-while-revalidate。
  * 更新站点代码后改 CACHE 版本号即可强制换缓存。 */
-const CACHE = 'yiliu-home-v8';
+const CACHE = 'yiliu-home-v13';
 const CORE = [
   '/',
   '/index.html',
   '/styles.css',
   '/manifest.json',
+  '/auth.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/maskable-192.png',
@@ -30,8 +31,10 @@ const CORE = [
   '/src/components/TaskItem.js',
   '/src/components/TaskList.js',
   '/src/components/Weather.js',
+  '/src/services/apiClient.js',
   '/src/services/bookmarkService.js',
   '/src/services/habitService.js',
+  '/src/services/noteService.js',
   '/src/services/searchService.js',
   '/src/services/taskService.js',
   '/src/services/weatherService.js',
@@ -83,7 +86,22 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-  // 静态资源：stale-while-revalidate
+  // 应用模块：网络优先，确保发布修复后不会继续执行旧 JS；离线时回退缓存
+  if (url.pathname.startsWith('/src/') || url.pathname === '/auth.js' || url.pathname === '/styles.css') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' })
+        .then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((cache) => cache.put(event.request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // 其它静态资源：stale-while-revalidate
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);

@@ -1,64 +1,82 @@
 /**
  * 应用入口文件
  *
- * 初始化顺序：
- * 1. 数据迁移
- * 2. 认证检查
- * 3. 路由初始化
- * 4. 全局搜索
- * 5. 应用启动
+ * 启动状态机：
+ * 1. DOMContentLoaded：绑定锁屏 UI、注册认证事件
+ * 2. 有 session token → bootstrap() 成功后启动应用；失败则清会话回锁屏
+ * 3. 无 token → 停在锁屏
+ * 4. 锁屏提交 → auth.js 内 login + bootstrap 成功 → 派发 yiliu:authenticated → 启动应用
+ * 5. 任意 401 / yiliu:auth-expired → 清会话回锁屏
+ *
+ * router 惰性创建（initRouter），仅在认证通过后初始化，避免 import 时提前渲染。
  */
 
-import { migrateData } from './core/migration.js';
-import router from './router.js';
+import { initRouter } from './router.js';
 import Toast from './components/base/Toast.js';
 import SearchBar from './components/SearchBar.js';
 import searchService from './services/searchService.js';
-import { init as initBookmarks } from './services/bookmarkService.js';
+import { isLoggedIn, bootstrap, logout, AUTH_EXPIRED_EVENT } from './services/apiClient.js';
+import { initAuthUI, showLockScreen, showAuthenticatedApp, AUTHENTICATED_EVENT } from '../auth.js?v=13';
 import store from './store.js';
+
+let router = null;
+let started = false;
 
 // 等待 DOM 加载
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[App] Starting...');
 
-  // 步骤 1: 数据迁移
-  const migrated = migrateData();
-  if (migrated) {
-    Toast.success('数据已从旧版本迁移到新架构', 4000);
+  initAuthUI();
+  window.addEventListener(AUTH_EXPIRED_EVENT, onAuthExpired);
+  window.addEventListener(AUTHENTICATED_EVENT, onAuthenticated);
+
+  if (isLoggedIn()) {
+    // 有会话 token：先 bootstrap，成功再启动
+    bootstrap()
+      .then(() => {
+        showAuthenticatedApp();
+        startApp();
+      })
+      .catch((err) => {
+        console.error('[App] Bootstrap failed:', err);
+        logout();
+        showLockScreen();
+      });
+  } else {
+    // 无 token：停在锁屏
+    showLockScreen();
   }
+});
 
-  // 步骤 2: 认证检查
-  const isAuthenticated = checkAuth();
-  if (!isAuthenticated) {
-    // 如果未认证，显示锁屏
-    // 这里暂时跳过，auth.js 会处理
-    console.log('[App] Auth check: using existing auth.js');
-  }
+/** 认证成功（锁屏提交成功）后启动应用 */
+function onAuthenticated() {
+  startApp();
+}
 
-  // 步骤 3: 路由初始化已在 import 时完成
-  console.log('[App] Router initialized');
+/** 401 / 认证失效：清除会话并回锁屏 */
+function onAuthExpired() {
+  logout();
+  showLockScreen();
+}
 
-  // 步骤 4: 初始化全局搜索
+/** 启动业务应用（幂等） */
+function startApp() {
+  if (started) return;
+  started = true;
+
+  // 路由惰性初始化（此时才首次渲染）
+  router = initRouter();
+
+  // 初始化全局搜索
   initGlobalSearch();
 
-  // 步骤 5: 显示启动信息
   console.log('%c[App] V2 Architecture Ready', 'color: #6d8169; font-weight: bold; font-size: 14px');
   console.log('📦 Store:', window.__STORE__);
   console.log('🛣️ Router:', router);
   console.log('🔍 Global search: Press Ctrl+K');
 
-  // 步骤 6: 书签同步初始化（已登录则后台拉取）
-  initBookmarks();
-
   // 欢迎提示
   Toast.info('欢迎使用一流工作台 V2 - 按 Ctrl+K 搜索', 3000);
-});
-
-/**
- * 检查认证状态
- */
-function checkAuth() {
-  return localStorage.getItem('yiliu.home.auth') === '1';
 }
 
 /**
@@ -77,19 +95,19 @@ function initGlobalSearch() {
 
       // 格式化结果
       const formatted = [
-        ...results.tasks.map(t => ({
+        ...results.tasks.map((t) => ({
           type: 'task',
           id: t.id,
           title: t.title,
           subtitle: `优先级: ${t.priority}`,
         })),
-        ...results.bookmarks.map(b => ({
+        ...results.bookmarks.map((b) => ({
           type: 'bookmark',
           id: b.id,
           title: b.title,
           subtitle: b.url,
         })),
-        ...results.habits.map(h => ({
+        ...results.habits.map((h) => ({
           type: 'habit',
           id: h.id,
           title: h.title,
@@ -103,7 +121,7 @@ function initGlobalSearch() {
       // 根据类型跳转
       if (item.type === 'bookmark') {
         const bookmarks = store.getState().bookmarks || [];
-        const bookmark = bookmarks.find(b => b.id === item.id);
+        const bookmark = bookmarks.find((b) => b.id === item.id);
         if (bookmark) {
           window.open(bookmark.url, '_blank');
         }
