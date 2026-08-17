@@ -2,6 +2,11 @@
 window.NAV_BOOKMARKS = [
  {
   "group": "书签栏",
+  "name": "中转监控",
+  "url": "https://monitor.duyiliu.top/dashboard.html"
+ },
+ {
+  "group": "书签栏",
   "name": "ChatGPT",
   "url": "https://chatgpt.com/"
  },

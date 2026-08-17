@@ -20,6 +20,7 @@ const PREFIX_ENGINES = {
 const DEFAULT_LINKS = [
   ["快科技", "https://www.kkj.cn/", "信息", "科技资讯与数码硬件", "#ff7a7a", 1],
   ["OSChina", "https://www.oschina.net/", "开发", "开源中国社区", "#8ff0a4", 2],
+  ["中转监控", "https://monitor.duyiliu.top/dashboard.html", "运维", "中转站状态与健康监控仪表盘", "#5eead4", 5],
   ["邮箱", "https://mail.google.com/", "工作流", "处理收件箱与日程邀请", "#f3c969", 10],
   ["日历", "https://calendar.google.com/", "工作流", "查看会议和时间块", "#74e6d6", 20],
   ["Notion", "https://www.notion.so/", "工作流", "项目文档和知识库", "#ffffff", 30],
