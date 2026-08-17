@@ -16,16 +16,7 @@
   --shadow: 0 18px 48px rgba(82, 62, 43, 0.12), 0 4px 14px rgba(82, 62, 43, 0.06);
   --shadow-soft: 0 10px 28px rgba(82, 62, 43, 0.09);
   --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --color-surface: var(--paper);
-  --color-surface-2: var(--paper-2);
-  --color-text: var(--ink);
-  --color-text-secondary: var(--ink-soft);
-  --color-border: var(--line);
-  --color-primary: var(--accent);
-  --color-accent: var(--accent-2);
-  --color-danger: #bf4f3c;
-  --color-success: var(--sage);
+  --mono: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -106,11 +97,10 @@ input::placeholder, textarea::placeholder { color: #aa9785; }
 .page-shell { width: min(1360px, calc(100vw - 80px)); margin: 0 auto 34px; }
 .topbar {
   display: flex;
-  width: min(1360px, calc(100vw - 80px));
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  margin: 0 auto 44px;
+  margin-bottom: 44px;
 }
 .brand { display: flex; align-items: center; gap: 16px; }
 .brand-mark {
@@ -358,131 +348,6 @@ p { color: var(--muted); line-height: 1.55; }
   border-radius: 999px;
 }
 .settings-card { width: 480px; background: var(--paper); }
-
-.stats-view,
-.settings-view {
-  width: min(1120px, calc(100vw - 80px));
-  margin: 0 auto 34px;
-}
-.view-header {
-  margin-bottom: 24px;
-}
-.view-header h1 {
-  margin: 0;
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-}
-.stats-card,
-.stats-section,
-.settings-section {
-  padding: 24px;
-  background: rgba(255, 250, 243, 0.88);
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  box-shadow: var(--shadow-soft);
-}
-.stats-card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.stats-card-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-.stats-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  background: var(--paper-3);
-  border-radius: 12px;
-}
-.stats-list {
-  display: grid;
-  gap: 10px;
-}
-.stats-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 12px;
-  background: var(--paper-2);
-  border-radius: 12px;
-}
-.stats-label,
-.chart-bar-label,
-.setting-desc {
-  color: var(--muted);
-}
-.stats-value {
-  font-size: 18px;
-  font-weight: 900;
-}
-.stats-section {
-  margin-top: 20px;
-}
-.stats-section h2,
-.settings-section h2 {
-  margin-bottom: 20px;
-}
-.chart-bars {
-  display: grid;
-  gap: 12px;
-}
-.chart-bar-item {
-  display: grid;
-  grid-template-columns: minmax(110px, 190px) minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-}
-.chart-bar-wrapper {
-  position: relative;
-  height: 30px;
-  overflow: hidden;
-  background: var(--paper-3);
-  border-radius: 999px;
-}
-.chart-bar-fill {
-  height: 100%;
-  min-width: 4px;
-  background: var(--accent);
-  border-radius: 999px;
-}
-.chart-bar-fill.priority-normal { background: var(--accent-2); }
-.chart-bar-fill.priority-low { background: var(--sage); }
-.chart-bar-value {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 900;
-  transform: translateY(-50%);
-}
-.settings-sections {
-  display: grid;
-  gap: 20px;
-}
-.setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 16px 0;
-  border-top: 1px solid var(--line);
-}
-.settings-section h2 + .setting-row { border-top: 0; }
-.setting-title { margin-bottom: 4px; font-weight: 900; }
-.setting-select { min-width: 150px; }
-.btn-danger { color: #fffaf3; background: var(--color-danger); }
-.about-info p { margin-bottom: 8px; }
 .hidden { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
@@ -491,11 +356,10 @@ p { color: var(--muted); line-height: 1.55; }
   .right-rail { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-  .browser-frame, .page-shell, .topbar, .stats-view, .settings-view { width: min(100% - 28px, 720px); }
+  .browser-frame, .page-shell { width: min(100% - 28px, 720px); }
   .topbar, .app-footer { flex-direction: column; align-items: stretch; border-radius: 24px; }
   .topbar-actions, .prompt-row, .widget-actions { justify-content: flex-start; }
-  .app-layout, .mid-grid, .radar-columns, .right-rail, .stats-grid { grid-template-columns: 1fr; }
-  .chart-bar-item { grid-template-columns: 100px minmax(0, 1fr); }
+  .app-layout, .mid-grid, .radar-columns, .right-rail { grid-template-columns: 1fr; }
   .link-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .command-search { grid-template-columns: 40px 1fr; }
   .command-search select, .command-search button { grid-column: span 1; }
@@ -512,10 +376,6 @@ p { color: var(--muted); line-height: 1.55; }
 /* ==========================================
    LOCK SCREEN (前端口令锁)
    ========================================== */
-/* App Shell：认证通过前业务壳整体隐藏，仅显示锁屏 */
-#appShell { display: none; }
-#appShell.is-visible { display: block; }
-.lock-hint { margin: 12px 0 0 !important; font-size: 11px; color: var(--muted); opacity: 0.75; }
 .lock-screen {
   position: fixed;
   inset: 0;
@@ -577,16 +437,4 @@ p { color: var(--muted); line-height: 1.55; }
   25% { transform: translateX(-6px); }
   50% { transform: translateX(5px); }
   75% { transform: translateX(-3px); }
-}
-
-/* Undo Toast Animation */
-@keyframes slideIn {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }

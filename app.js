@@ -18,9 +18,9 @@ const PREFIX_ENGINES = {
 };
 
 const DEFAULT_LINKS = [
-  ["快科技", "https://www.kkj.cn/", "信息", "科技资讯与数码硬件", "#ff7a7a", 1],
+  ["中转监控", "https://monitor.duyiliu.top/dashboard.html", "开发", "6大中转站可用性与倍率监控看板", "#ff7a7a", 1],
+  ["快科技", "https://www.kkj.cn/", "信息", "科技资讯与数码硬件", "#ff7a7a", 2],
   ["OSChina", "https://www.oschina.net/", "开发", "开源中国社区", "#8ff0a4", 2],
-  ["中转监控", "https://monitor.duyiliu.top/dashboard.html", "运维", "中转站状态与健康监控仪表盘", "#5eead4", 5],
   ["邮箱", "https://mail.google.com/", "工作流", "处理收件箱与日程邀请", "#f3c969", 10],
   ["日历", "https://calendar.google.com/", "工作流", "查看会议和时间块", "#74e6d6", 20],
   ["Notion", "https://www.notion.so/", "工作流", "项目文档和知识库", "#ffffff", 30],
@@ -86,19 +86,6 @@ function saveLocalData() {
   );
 }
 
-function debouncedSave(immediate = false) {
-  if (immediate) {
-    clearTimeout(saveQueue);
-    saveLocalData();
-    return;
-  }
-
-  clearTimeout(saveQueue);
-  saveQueue = setTimeout(() => {
-    saveLocalData();
-  }, 150);
-}
-
 const state = {
   links: [],
   tasks: [],
@@ -109,11 +96,7 @@ const state = {
   habits: [],
   noteSaveTimer: null,
   weather: null,
-  undoStack: [],
-  undoTimer: null,
 };
-
-let saveQueue = null;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -155,15 +138,9 @@ function bindEvents() {
     }
   });
 
-  // 导出/导入数据
-  $("#exportData").addEventListener("click", handleExportData);
-  $("#importData").addEventListener("click", handleImportData);
-
   document.addEventListener("keydown", (event) => {
     const active = document.activeElement;
     const isTyping = ["INPUT", "TEXTAREA", "SELECT"].includes(active?.tagName);
-
-    // 原有快捷键
     if (event.key === "/" && !isTyping) {
       event.preventDefault();
       $("#searchInput").focus();
@@ -171,48 +148,6 @@ function bindEvents() {
     if (event.key.toLowerCase() === "n" && !isTyping) {
       event.preventDefault();
       $("#taskInput").focus();
-    }
-
-    // ESC 关闭表单或失焦
-    if (event.key === "Escape") {
-      if (!$("#linkForm").classList.contains("hidden")) {
-        toggle("#linkForm", false);
-      }
-      if (!$("#sourceForm").classList.contains("hidden")) {
-        toggle("#sourceForm", false);
-      }
-      if (!$("#habitForm").classList.contains("hidden")) {
-        toggle("#habitForm", false);
-      }
-      if (isTyping) {
-        active.blur();
-      }
-    }
-
-    // Ctrl/Cmd + K: 聚焦搜索
-    if ((event.ctrlKey || event.metaKey) && event.key === "k") {
-      event.preventDefault();
-      $("#searchInput").focus();
-    }
-
-    // Ctrl/Cmd + Z: 撤销删除
-    if ((event.ctrlKey || event.metaKey) && event.key === "z" && !isTyping) {
-      event.preventDefault();
-      handleUndo();
-    }
-
-    // L: 添加新链接
-    if (event.key.toLowerCase() === "l" && !isTyping) {
-      event.preventDefault();
-      toggle("#linkForm", true);
-      setTimeout(() => $("#linkTitle").focus(), 100);
-    }
-
-    // R: 添加信息源
-    if (event.key.toLowerCase() === "r" && !isTyping) {
-      event.preventDefault();
-      toggle("#sourceForm", true);
-      setTimeout(() => $("#sourceTitle").focus(), 100);
     }
   });
 }
@@ -260,7 +195,7 @@ function uid() {
 function localRow(table, fields) {
   const row = { id: uid(), ...fields };
   state[table].push(row);
-  debouncedSave();
+  saveLocalData();
   return row;
 }
 
@@ -268,13 +203,13 @@ function localUpdate(table, id, patch) {
   const idx = state[table].findIndex((row) => row.id === id);
   if (idx !== -1) {
     state[table][idx] = { ...state[table][idx], ...patch };
-    debouncedSave();
+    saveLocalData();
   }
 }
 
 function localDelete(table, id) {
   state[table] = state[table].filter((row) => row.id !== id);
-  debouncedSave();
+  saveLocalData();
 }
 
 function buildDailySummary() {
@@ -581,9 +516,7 @@ function createTask(event) {
     done: false,
   });
   $("#taskInput").value = "";
-  renderTasks();
-  renderMetrics();
-  setStatus("已保存", "ok");
+  loadDashboard();
 }
 
 function updateTask(id, patch) {
@@ -592,20 +525,13 @@ function updateTask(id, patch) {
     payload.completed_at = patch.done ? new Date().toISOString() : null;
   }
   localUpdate("tasks", id, payload);
-  renderTasks();
-  renderMetrics();
-  if (state.selectedCalendarDate) {
-    renderCalendarDayDetails(state.selectedCalendarDate);
-  }
-  setStatus("已保存", "ok");
+  loadDashboard();
 }
 
 function clearDoneTasks() {
   state.tasks = state.tasks.filter((task) => !task.done);
   saveLocalData();
-  renderTasks();
-  renderMetrics();
-  setStatus("已清理", "ok");
+  loadDashboard();
 }
 
 function createLink(event) {
@@ -621,9 +547,7 @@ function createLink(event) {
   $("#linkForm").reset();
   $("#linkCategory").value = "常用";
   toggle("#linkForm", false);
-  renderLinks();
-  renderMetrics();
-  setStatus("已保存", "ok");
+  loadDashboard();
 }
 
 function createSource(event) {
@@ -639,127 +563,12 @@ function createSource(event) {
   $("#sourceForm").reset();
   $("#sourceCategory").value = "技术";
   toggle("#sourceForm", false);
-  renderSources();
-  renderMetrics();
-  setStatus("已保存", "ok");
+  loadDashboard();
 }
 
 function deleteRow(table, id) {
-  const item = state[table].find(row => row.id === id);
-  if (!item) return;
-
-  // 保存到撤销栈
-  const action = table === "tasks" ? "deleteTask" :
-                 table === "links" ? "deleteLink" :
-                 table === "sources" ? "deleteSource" : "delete";
-  pushUndo(action, { ...item });
-
   localDelete(table, id);
-
-  // 根据表类型选择性重绘
-  if (table === "tasks") {
-    renderTasks();
-    renderMetrics();
-  } else if (table === "links") {
-    renderLinks();
-    renderMetrics();
-  } else if (table === "sources") {
-    renderSources();
-    renderMetrics();
-  }
-}
-
-function pushUndo(action, data) {
-  state.undoStack.push({ action, data, timestamp: Date.now() });
-  // 只保留最近 20 条
-  if (state.undoStack.length > 20) {
-    state.undoStack.shift();
-  }
-  showUndoToast(action);
-}
-
-function showUndoToast(action) {
-  // 移除已有提示
-  const existing = document.getElementById("undoToast");
-  if (existing) existing.remove();
-
-  const toast = document.createElement("div");
-  toast.id = "undoToast";
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 40px;
-    right: 40px;
-    padding: 14px 20px;
-    background: var(--dark);
-    color: var(--paper);
-    border-radius: 16px;
-    box-shadow: var(--shadow);
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    z-index: 9999;
-    animation: slideIn 200ms ease;
-  `;
-
-  const actionText = action === "deleteTask" ? "已删除任务" :
-                     action === "deleteLink" ? "已删除链接" :
-                     action === "deleteSource" ? "已删除信息源" :
-                     action === "deleteHabit" ? "已删除习惯" : "已删除";
-
-  toast.innerHTML = `
-    <span>${actionText}</span>
-    <button type="button" style="background: var(--accent); color: white; padding: 6px 12px; font-size: 12px; min-height: 28px;">
-      撤销 (Ctrl+Z)
-    </button>
-  `;
-
-  const undoBtn = toast.querySelector("button");
-  undoBtn.addEventListener("click", handleUndo);
-
-  document.body.appendChild(toast);
-
-  clearTimeout(state.undoTimer);
-  state.undoTimer = setTimeout(() => {
-    toast.remove();
-  }, 5000);
-}
-
-function handleUndo() {
-  if (state.undoStack.length === 0) return;
-
-  const { action, data } = state.undoStack.pop();
-
-  switch (action) {
-    case "deleteTask":
-      state.tasks.push(data);
-      debouncedSave(true);
-      renderTasks();
-      renderMetrics();
-      break;
-    case "deleteLink":
-      state.links.push(data);
-      debouncedSave(true);
-      renderLinks();
-      renderMetrics();
-      break;
-    case "deleteSource":
-      state.sources.push(data);
-      debouncedSave(true);
-      renderSources();
-      renderMetrics();
-      break;
-    case "deleteHabit":
-      state.habits.push(data);
-      debouncedSave(true);
-      renderHabits();
-      renderMetrics();
-      break;
-  }
-
-  const toast = document.getElementById("undoToast");
-  if (toast) toast.remove();
-
-  setStatus("已撤销", "ok");
+  loadDashboard();
 }
 
 function scheduleNoteSave() {
@@ -1226,84 +1035,6 @@ function createHabit(event) {
 }
 
 function deleteHabit(habitId) {
-  const habit = state.habits.find(h => h.id === habitId);
-  if (!habit) return;
-
-  pushUndo("deleteHabit", { ...habit });
-
   const updated = state.habits.filter(habit => habit.id !== habitId);
   saveHabits(updated);
-}
-
-// ==========================================
-// DATA EXPORT/IMPORT
-// ==========================================
-function handleExportData() {
-  const data = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    data: {
-      links: state.links,
-      tasks: state.tasks,
-      sources: state.sources,
-      feedItems: state.feedItems,
-      note: state.note,
-      habits: state.habits,
-    },
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-  a.href = url;
-  a.download = `yiliu-backup-${timestamp}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  setStatus("已导出备份", "ok");
-}
-
-function handleImportData() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json";
-  input.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const backup = JSON.parse(text);
-
-      if (!backup.version || !backup.data) {
-        throw new Error("备份文件格式不正确");
-      }
-
-      const confirmed = confirm(
-        `确定要导入备份吗？\n` +
-        `导出时间: ${new Date(backup.exportedAt).toLocaleString("zh-CN")}\n` +
-        `当前数据将被覆盖，建议先导出当前备份。`
-      );
-
-      if (!confirmed) return;
-
-      // 恢复数据
-      state.links = backup.data.links || [];
-      state.tasks = backup.data.tasks || [];
-      state.sources = backup.data.sources || [];
-      state.feedItems = backup.data.feedItems || [];
-      state.note = backup.data.note || null;
-      state.habits = backup.data.habits || [];
-
-      saveLocalData();
-      renderAll();
-      setStatus("已导入备份", "ok");
-
-    } catch (error) {
-      console.error(error);
-      alert("导入失败：" + error.message);
-      setStatus("导入失败", "error");
-    }
-  });
-  input.click();
 }
