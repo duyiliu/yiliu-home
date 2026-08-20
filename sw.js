@@ -1,7 +1,7 @@
 /* yiliu-home Service Worker
  * 页面导航 = network-first（在线拿最新，改密码立即生效）；静态资源 = stale-while-revalidate。
  * 更新站点代码后改 CACHE 版本号即可强制换缓存。 */
-const CACHE = 'yiliu-home-v20';
+const CACHE = 'yiliu-home-v24';
 const CORE = [
   '/',
   '/index.html',
